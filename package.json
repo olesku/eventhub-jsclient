@@ -1,0 +1,19 @@
+{
+  "name": "eventhub-jsclient",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/olesku/eventhub-jsclient.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/olesku/eventhub-jsclient#readme",
+  "dependencies": {
+    "@types/ws": "^6.0.3"
+  }
+}
