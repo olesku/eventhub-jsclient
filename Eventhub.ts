@@ -1,8 +1,7 @@
 
 /*
-Written by Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
 The MIT License (MIT)
-Copyright (c) 2019 Ole Fredrik Skudsvik
+Copyright (c) 2019 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -119,11 +118,11 @@ export class Eventhub {
       const responseObj : Object = JSON.parse(response);
 
       if(!responseObj.hasOwnProperty('id') || responseObj['id'] == 'null') {
-        console.log("Got RPC Response without ID:", response);
         return;
       }
 
-      // If this is a message publish then check if we are subscribed and call the corrrect callback.
+      // If this is a message event then check if we are
+      // subscribed and call the corrrect callback.
       if (responseObj.hasOwnProperty('result') && responseObj['result'].hasOwnProperty('message') && responseObj['result'].hasOwnProperty('topic')) {
         for (let subscription of this._subscriptionCallbackList) {
           if (subscription.rpcRequestId == responseObj['id']) {
@@ -133,7 +132,7 @@ export class Eventhub {
         }
       }
 
-      // This is not a subscription response.
+      // This is not a message event, see if we have a callback for it.
       let rpcCallback = undefined;
       for (let callback of  this._rpcCallbackList) {
         if (callback[0] == responseObj['id']) {
@@ -193,14 +192,17 @@ export class Eventhub {
     }
 
     if (topicList.length < 1) {
-      // Todo: Return a error promise instead of throwing.
-      throw Error("You must specify at least on topic to subscribe to.");
+      return new Promise((_, reject) => {
+        reject(Error("You must specify at least on topic to subscribe to."))
+      });
     }
 
     // First check if we are already subscribed to any of the given topics.
     for (const topic of topicList) {
       if (this.isSubscribed(topic)) {
-        throw new Error(`Already subscribed to ${topic}`);
+        return new Promise((_, reject) => {
+          reject(Error(`Already subscribed to ${topic}`))
+        });
       }
     }
 
