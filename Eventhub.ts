@@ -1,3 +1,25 @@
+
+/*
+Written by Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
+The MIT License (MIT)
+Copyright (c) 2019 Ole Fredrik Skudsvik
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 import WebSocket from 'ws';
 
 declare type RPCCallback = (err: string, message: string) => void;
@@ -9,7 +31,8 @@ enum RPCMethods {
   UNSUBSCRIBE     = 'unsubscribe',
   UNSUBSCRIBE_ALL = 'unsubscribeAll',
   LIST            = 'list',
-  HISTORY         = 'history' // Not implemented yet.
+  HISTORY         = 'history', // Not implemented yet.
+  DISCONNECT      = 'disconnect'
 }
 
 class Subscription {
@@ -39,7 +62,7 @@ export class Eventhub {
   }
 
   /**
-   * Connects to the eventhub.
+   * Connect to eventhub.
    * @return Promise with true on success or error string on fail.
    */
   public connect() : Promise<any> {
@@ -110,7 +133,7 @@ export class Eventhub {
         }
       }
 
-      // This is not a publish response.
+      // This is not a subscription response.
       let rpcCallback = undefined;
       for (let callback of  this._rpcCallbackList) {
         if (callback[0] == responseObj['id']) {
@@ -131,7 +154,7 @@ export class Eventhub {
         rpcCallback(null, responseObj['result']);
       }
 
-      // If it's not a subscription response, remove the callback once we got a response.
+      // Remove the callback once it has been called.
       for (let i = 0; i < this._rpcCallbackList.length; i++) {
         if (this._rpcCallbackList[i][0] == responseObj['id']) {
           this._rpcCallbackList.splice(i, 1);
@@ -155,7 +178,7 @@ export class Eventhub {
     return false;
   }
 
-  _/**
+  /**
    * Subscribe to one or more topic patterns.
    * @param topics Array of topics or single topic to subscribe to.
    * @param callback Callback to call when we receive a message the subscribed topic(s).
