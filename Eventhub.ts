@@ -62,7 +62,7 @@ export class Eventhub {
 
   /**
    * Connect to eventhub.
-   * @return Promise with true on success or error string on fail.
+   * @returns Promise with true on success or error string on fail.
    */
   public connect() : Promise<any> {
     return new Promise(
@@ -105,6 +105,7 @@ export class Eventhub {
         }
       }.bind(this)]);
 
+      console.log("RPC request:", JSON.stringify(requestObject));
       this._socket.send(JSON.stringify(requestObject));
     });
   }
@@ -178,44 +179,47 @@ export class Eventhub {
   }
 
   /**
-   * Subscribe to one or more topic patterns.
-   * @param topics Array of topics or single topic to subscribe to.
-   * @param callback Callback to call when we receive a message the subscribed topic(s).
+   * Subscribe to a topic pattern.
+   * @param topic Topic to subscribe to.
+   * @param callback Callback to call when we receive a message the subscribed topic.
+   * @returns Promise with success or callback.
    */
-  public subscribe(topics: Array<string>|string, callback: SubscriptionCallback) : Promise<any> {
-    let topicList: Array<string> = [];
+  public subscribe(topic: string, callback: SubscriptionCallback, sinceEvent?: string) : Promise<any> {
+    let subscribeRequest : Object = {
+      "topic": topic
+    };
 
-    if (typeof(topics) == 'string') {
-      topicList.push(topics);
-    } else {
-      topicList = topics;
-    }
-
-    if (topicList.length < 1) {
+    if (topic == "") {
       return new Promise((_, reject) => {
-        reject(Error("You must specify at least on topic to subscribe to."))
+        reject(new Error("Topic cannot be empty."))
       });
     }
 
-    // First check if we are already subscribed to any of the given topics.
-    for (const topic of topicList) {
-      if (this.isSubscribed(topic)) {
+    if (typeof(sinceEvent) == 'string' && sinceEvent != "") {
+      let sinceEventValidator = new RegExp('^[0-9]+([-]{1}[0-9]+)?$');
+      if (!sinceEventValidator.exec(sinceEvent)) {
         return new Promise((_, reject) => {
-          reject(Error(`Already subscribed to ${topic}`))
+          reject(new Error(`${sinceEvent} is a invalid message id.`));
         });
       }
+
+      subscribeRequest['sinceEvent'] = sinceEvent;
     }
 
-    // Do the actual subscription.
-    for (const topic of topicList) {
-      this._subscriptionCallbackList.push({
-        topic: topic,
-        rpcRequestId: (this._rpcResponseCounter+1),
-        callback: callback
+    // First check if we are already subscribed to the topic.
+    if (this.isSubscribed(topic)) {
+      return new Promise((_, reject) => {
+        reject(new Error(`Already subscribed to ${topic}`));
       });
     }
 
-    return this._sendRPCRequest(RPCMethods.SUBSCRIBE, topicList);
+    this._subscriptionCallbackList.push({
+      topic: topic,
+      rpcRequestId: (this._rpcResponseCounter+1),
+      callback: callback
+    });
+
+    return this._sendRPCRequest(RPCMethods.SUBSCRIBE, subscribeRequest);
   }
 
   /**
