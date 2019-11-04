@@ -6,7 +6,7 @@ It enables you to easily subscribe and publish to any eventhub server from the b
 ## Examples
 
 **Subscribe to a topic**
-	
+```js	
 	let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 	
     eventhub.connect().then(res => {
@@ -16,9 +16,10 @@ It enables you to easily subscribe and publish to any eventhub server from the b
 	}).catch(err => {
 		console.log(`Error connecting to Eventhub: ${err}`);
 	});
+```
 
 **Subscribe to a topic and get all history events since a given timestamp or messageid**
-	
+```js	
 	let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 	
     eventhub.connect().then(res => {
@@ -33,9 +34,10 @@ It enables you to easily subscribe and publish to any eventhub server from the b
 	}).catch(err => {
 		console.log(`Error connecting to Eventhub: ${err}`);
 	});
-	
-**Publish to a topic**
+```
 
+**Publish to a topic**
+```js
 	let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 	
     eventhub.connect().then(res => {
@@ -43,17 +45,20 @@ It enables you to easily subscribe and publish to any eventhub server from the b
 	}).catch(err => {
 		console.log(`Error connecting to Eventhub: ${err}`);
 	});
+```
 
 **Unsubscribe from a topic**
-
+```js
     eventhub.unsubscribe("my/topic");
-  
+```
+
 **Unsubscribe from all subscribed topics**
-
+```js
     eventhub.unsubscribeAll();
-   
+```
   **List all current subscribed topics**
-
+```js
     eventhub.listSubscriptions().then( subscroptions => {
 	    console.log("Subscriptions:", subscriptions);
     });
+```
