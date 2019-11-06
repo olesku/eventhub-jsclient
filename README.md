@@ -10,7 +10,7 @@ $ npm i --save eventhub-client
 
 ## Examples
 
-Look in the [examples](https://github.com/olesku/eventhub.js/examples/) directory for more examples.
+Look in the [examples](https://github.com/olesku/eventhub.js/tree/master/examples) directory for more examples.
 
 **Subscribe to a topic**
 ```js
