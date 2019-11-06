@@ -22,8 +22,8 @@
         eventhub.listSubscriptions().then(foo=>{
           document.write("<br>List of currenly subscribed topics:<ul>");
 
-          foo.forEach(element => {
-            document.write("<li>" + element + "</li>");
+          foo.forEach(topicName => {
+            document.write("<li>" + topicName + "</li>");
           });
 
           document.write("</ul>");
