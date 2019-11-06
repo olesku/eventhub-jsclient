@@ -19,7 +19,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-import WebSocket from 'ws';
+import WebSocket from 'isomorphic-ws';
 
 declare type RPCCallback = (err: string, message: string) => void;
 declare type SubscriptionCallback = (message: string) => void;
@@ -40,7 +40,7 @@ class Subscription {
   callback: SubscriptionCallback
 }
 
-export class Eventhub {
+export default class Eventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
   private _rpcResponseCounter: number;
@@ -52,7 +52,7 @@ export class Eventhub {
    * @param url Eventhub websocket url.
    * @param token Authentication token.
    */
-  constructor (url: string, token: string) {
+  constructor (url: string, token?: string) {
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
@@ -68,15 +68,15 @@ export class Eventhub {
     return new Promise(
       (resolve, reject) => {
         this._socket = new WebSocket(this._wsUrl);
-        this._socket.on('message', this._parseRPCResponse.bind(this));
+        this._socket.onmessage = this._parseRPCResponse.bind(this);
 
-        this._socket.on('open', function() {
+        this._socket.onopen = function() {
           resolve(true);
-        });
+        };
 
-        this._socket.on('error', function(err) {
+        this._socket.onerror = function(err) {
           reject(err);
-        })
+        };
     });
   }
 
@@ -105,7 +105,6 @@ export class Eventhub {
         }
       }.bind(this)]);
 
-      console.log("RPC request:", JSON.stringify(requestObject));
       this._socket.send(JSON.stringify(requestObject));
     });
   }
@@ -114,9 +113,9 @@ export class Eventhub {
    * Parse incoming websocket response and call correct handlers.
    * @param response Response string.
    */
-  private _parseRPCResponse(response: string) : void {
+  private _parseRPCResponse(response: Object) : void {
     try {
-      const responseObj : Object = JSON.parse(response);
+      const responseObj : Object = JSON.parse(response['data']);
 
       if(!responseObj.hasOwnProperty('id') || responseObj['id'] == 'null') {
         return;
@@ -160,7 +159,6 @@ export class Eventhub {
           this._rpcCallbackList.splice(i, 1);
         }
       }
-
     } catch (err) {
       console.log("Failed to parse websocket response:", err);
       return;
@@ -280,4 +278,3 @@ export class Eventhub {
     return this._sendRPCRequest(RPCMethods.LIST, []);
   }
 }
-

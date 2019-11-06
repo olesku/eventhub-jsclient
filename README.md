@@ -1,18 +1,20 @@
 # eventhub.js
 
-eventhub.js is a JavaScript client library for Eventhub.
+eventhub.js is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
 It enables you to easily subscribe and publish to any eventhub server from the browser or Node.js.
 
 ## Installation
 ```bash
-$ npm i --save eventhub-jsclient
+$ npm i --save eventhub-client
 ```
 
 ## Examples
 
+Look in the [examples](https://github.com/olesku/eventhub.js/examples/) directory for more examples.
+
 **Subscribe to a topic**
 ```js
-import { Eventhub } from 'eventhub-jsclient';
+import { Eventhub } from 'eventhub-client';
 
 let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
