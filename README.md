@@ -21,7 +21,7 @@ Look in the [examples](https://github.com/olesku/eventhub.js/tree/master/example
 
 **Subscribe to a topic**
 ```js
-import { Eventhub } from 'eventhub-client';
+import Eventhub from 'eventhub-client';
 
 let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
