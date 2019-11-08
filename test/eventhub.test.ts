@@ -6,13 +6,12 @@ const testServer = new Server({
 });
 
 const eventhub = new Eventhub(`ws://127.0.0.1:${testServer.options.port}`, "");
-
-var wsResponseResolve, subscribeCallbackResolve, wsClient = undefined;
+let wsResponseResolve, subscribeCallbackResolve, wsClient = undefined;
 
 testServer.on('connection', function (ws) {
   wsClient = ws;
 
-  ws.on('message', function (msg) {
+  ws.on('message', (msg) => {
     if (wsResponseResolve != undefined) {
       wsResponseResolve(JSON.parse(msg.toString()));
       wsResponseResolve = undefined;
@@ -49,7 +48,7 @@ test('Test that subscribe() sends correct RPC request to server', async () => {
     subscribeCallbackResolve(true);
   })).resolves.toBeCalled();
 
-  let resp = await waitForWSResponse();
+  const resp = await waitForWSResponse();
 
   expect(resp).toEqual({
     id: 1,
@@ -59,7 +58,6 @@ test('Test that subscribe() sends correct RPC request to server', async () => {
       topic: "testTopic"
     }
   });
-
 });
 
 test('Test that isSubscribe is true for subscribed topic', () => {
@@ -75,7 +73,7 @@ test('Expect subscribe callback to be called when we recieve a message', async (
 
 test('Test that publish() sends correct RPC request', async () => {
   eventhub.publish("testTopic", "Test message");
-  let resp = await waitForWSResponse();
+  const resp = await waitForWSResponse();
 
   expect(resp).toEqual({
     id: 2,
@@ -90,7 +88,7 @@ test('Test that publish() sends correct RPC request', async () => {
 
 test('Test that unsubscribe() sends correct RPC request', async () => {
   eventhub.unsubscribe("testTopic");
-  let resp = await waitForWSResponse();
+  const resp = await waitForWSResponse();
 
   expect(resp).toEqual({
     id: 3,
@@ -108,7 +106,7 @@ test('Test that isSubscribe is false after unsubscribe', () => {
 
 test('Test that unsubscribeAll() sends correct RPC request', async () => {
   eventhub.unsubscribeAll();
-  let resp = await waitForWSResponse();
+  const resp = await waitForWSResponse();
 
   expect(resp).toEqual({
     id: 4,
