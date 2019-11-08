@@ -22,7 +22,7 @@ THE SOFTWARE.
 import WebSocket from 'isomorphic-ws';
 
 declare type RPCCallback = (err: string, message: string) => void;
-declare type SubscriptionCallback = (message: string) => void;
+declare type SubscriptionCallback = (message: any) => void;
 
 enum RPCMethods {
   PUBLISH         = "publish",
@@ -248,12 +248,11 @@ export default class Eventhub {
 
   /**
   * Unsubscribe from all topics.
-  * @returns Number of unsuscribed topics.
+
   */
-  public unsubscribeAll() : number {
+  public unsubscribeAll() : void {
     this._subscriptionCallbackList = [];
     this._sendRPCRequest(RPCMethods.UNSUBSCRIBE_ALL, []);
-    return 0;
   }
 
   /**

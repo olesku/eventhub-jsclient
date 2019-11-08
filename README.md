@@ -36,6 +36,8 @@ eventhub.connect().then(res => {
 
 **Subscribe to a topic and get all history events since a given timestamp or messageid**
 ```js
+import Eventhub from 'eventhub-client';
+
 let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 eventhub.connect().then(res => {
@@ -54,6 +56,8 @@ eventhub.connect().then(res => {
 
 **Publish to a topic**
 ```js
+import Eventhub from 'eventhub-client';
+
 let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 eventhub.connect().then(res => {

@@ -2,12 +2,14 @@
   "name": "eventhub-client",
   "version": "1.0.0",
   "description": "Eventhub.js is a JavaScript client library for Eventhub. It enables you to easily subscribe and publish to any eventhub server from the browser or Node.js.",
-  "source": "Eventhub.ts",
+  "source": "src/eventhub.ts",
   "main": "dist/eventhub.js",
   "module": "dist/eventhub.mjs",
   "unpkg": "dist/eventhub.umd.js",
   "scripts": {
     "build": "microbundle --name Eventhub",
+    "test": "jest",
+    "test-dev": "jest --watch --verbose false",
     "dev": "microbundle watch --name Eventhub"
   },
   "repository": {
@@ -23,7 +25,11 @@
     "ws": "^7.2.0"
   },
   "devDependencies": {
+    "@types/jest": "^24.0.22",
+    "@types/node": "^12.12.6",
+    "jest": "^24.9.0",
     "microbundle": "^0.11.0",
+    "ts-jest": "^24.1.0",
     "typescript": "^3.7.2"
   }
 }
