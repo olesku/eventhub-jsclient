@@ -1,4 +1,5 @@
 # eventhub.js
+[![Build Status](https://travis-ci.com/olesku/eventhub.js.svg?branch=master)](https://travis-ci.com/olesku/eventhub.js)
 
 eventhub.js is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
 It enables you to easily subscribe and publish to any eventhub server from the browser or Node.js.
