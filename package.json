@@ -8,6 +8,8 @@
   "unpkg": "dist/eventhub.umd.js",
   "scripts": {
     "build": "microbundle --name Eventhub",
+    "test": "jest",
+    "test-dev": "jest --watch --verbose false",
     "dev": "microbundle watch --name Eventhub"
   },
   "repository": {

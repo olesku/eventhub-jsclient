@@ -4,6 +4,6 @@
     "module": "es2015"
   },
   "files": [
-    "eventhub.ts"
+    "src/eventhub.ts"
   ]
 }
