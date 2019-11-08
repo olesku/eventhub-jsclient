@@ -67,7 +67,7 @@ test('Test that isSubscribe is true for subscribed topic', () => {
 });
 
 test('Expect subscribe callback to be called when we recieve a message', async () => {
-  wsClient.send('{"id":1,"jsonrpc":"2.0","result":{"id":"1573183666822-0","message":"Test message","topic":"test1/test"}}');
+  wsClient.send('{"id":1,"jsonrpc":"2.0","result":{"id":"1573183666822-0","message":"Test message","topic":"testTopic"}}');
   const resp = await waitForSubscribeCallback();
 
   expect(resp).toBe(true);
