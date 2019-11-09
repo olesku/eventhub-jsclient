@@ -7,10 +7,10 @@ const Eventhub = require('eventhub-jsclient');
    You will get a 401 Unauthorized on connect if you don't
    do this.
 */
-const eventhub = new Eventhub("ws://127.0.0.1:8080", "myJWTToken");
+const evClient = new Eventhub("ws://127.0.0.1:8080", "myJWTToken");
 
-eventhub.connect().then(res=>{
-  eventhub.subscribe("test/#", function (data) {
+evClient.connect().then(res=>{
+  evClient.subscribe("test/#", function (data) {
     console.log("Callback called: Message: ", data);
   }).then(res => {
     console.log("Successfully subscribed to ", res.topic);
@@ -18,10 +18,10 @@ eventhub.connect().then(res=>{
     console.log("Failed to subscribe to channel.");
   });
 
-  eventhub.publish("test/myTopic1", "This is a test message!");
-  eventhub.publish("test/myTopic2", "This is another test message :)");
+  evClient.publish("test/myTopic1", "This is a test message!");
+  evClient.publish("test/myTopic2", "This is another test message :)");
 
-  eventhub.listSubscriptions().then(foo=>{
+  evClient.listSubscriptions().then(foo=>{
     console.log("\nList of currenly subscribed topics:");
 
     foo.forEach(topicName => {

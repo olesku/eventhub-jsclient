@@ -23,11 +23,10 @@ Look in the [examples](https://github.com/olesku/eventhub.js/tree/master/example
 **Subscribe to a topic**
 ```js
 const Eventhub = require('eventhub-jsclient');
+const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
-const eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
-
-eventhub.connect().then(res => {
-	eventhub.subscribe("my/topic", function (msg) {
+evClient.connect().then(res => {
+	evClient.subscribe("my/topic", function (msg) {
 		console.log(`Topic: ${msg.topic}: Message ID: ${msg.id} Message: ${msg.message}`);
 	});
 }).catch(err => {
@@ -38,16 +37,15 @@ eventhub.connect().then(res => {
 **Subscribe to a topic and get all history events since a given timestamp or messageid**
 ```js
 const Eventhub = require('eventhub-jsclient');
+const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
-const eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
-
-eventhub.connect().then(res => {
+evClient.connect().then(res => {
 	// Return all events since timestamp 1572811274719
 	// before subscribing.
 	// "0" will return all cached events available.
 	const eventsSince = "1572811274719";
 
-	eventhub.subscribe("my/topic", function (msg) {
+	evClient.subscribe("my/topic", function (msg) {
 		console.log(`Topic: ${msg.topic}: Message ID: ${msg.id} Message: ${msg.message}`);
 	}, eventsSince);
 }).catch(err => {
@@ -58,11 +56,10 @@ eventhub.connect().then(res => {
 **Publish to a topic**
 ```js
 const Eventhub = require('eventhub-jsclient');
+const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
-const eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
-
-eventhub.connect().then(res => {
-	eventhub.subscribe("my/topic");
+evClient.connect().then(res => {
+	evClient.subscribe("my/topic");
 }).catch(err => {
 	console.log(`Error connecting to Eventhub: ${err}`);
 });
@@ -83,3 +80,6 @@ eventhub.listSubscriptions().then( subscroptions => {
 	console.log("Subscriptions:", subscriptions);
 });
 ```
+
+# License
+eventhub-jsclient is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub.js/blob/master/LICENSE).
