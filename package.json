@@ -1,6 +1,6 @@
 {
   "name": "eventhub-jsclient",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Eventhub.js is a JavaScript client library for Eventhub. It enables you to easily subscribe and publish to any eventhub server from the browser or Node.js.",
   "source": "src/eventhub.ts",
   "main": "dist/eventhub.js",
@@ -16,11 +16,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com:olesku/eventhub.js.git"
+    "url": "git+ssh://git@github.com:olesku/eventhub-jsclient.git"
   },
   "author": "Ole Fredrik Skudsvik",
   "license": "MIT",
-  "homepage": "https://github.com/olesku/eventhub.js",
+  "homepage": "https://github.com/olesku/eventhub-jsclient",
   "dependencies": {
     "@types/ws": "^6.0.3",
     "isomorphic-ws": "^4.0.1",

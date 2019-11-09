@@ -1,5 +1,5 @@
 # eventhub-jsclient
-[![Build Status](https://travis-ci.com/olesku/eventhub.js.svg?branch=master)](https://travis-ci.com/olesku/eventhub.js)
+[![Build Status](https://travis-ci.com/olesku/eventhub-jsclient.svg?branch=master)](https://travis-ci.com/olesku/eventhub-jsclient)
 
 eventhub-jsclient is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
 It enables you to easily subscribe and publish to a eventhub server from the browser or Node.js.
@@ -18,7 +18,7 @@ You can then find the built bundles in the ```dist``` directory.
 
 ## Examples
 
-Look in the [examples](https://github.com/olesku/eventhub.js/tree/master/examples) directory for more examples.
+Look in the [examples](https://github.com/olesku/eventhub-jsclient/tree/master/examples) directory for more examples.
 
 **Subscribe to a topic**
 ```js
@@ -82,4 +82,4 @@ eventhub.listSubscriptions().then( subscroptions => {
 ```
 
 # License
-eventhub-jsclient is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub.js/blob/master/LICENSE).
+eventhub-jsclient is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub-jsclient/blob/master/LICENSE).
