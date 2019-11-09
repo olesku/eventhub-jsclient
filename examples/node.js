@@ -1,5 +1,13 @@
-var Eventhub = require("../dist/eventhub.js");
-let eventhub = new Eventhub("ws://127.0.0.1:8080", "myJWTToken");
+const Eventhub = require('eventhub-jsclient');
+
+/*
+   NOTE: Replace myJWTToken with a valid token or start
+   the Eventhub server with DISABLE_AUTH=1 for testing.
+
+   You will get a 401 Unauthorized on connect if you don't
+   do this.
+*/
+const eventhub = new Eventhub("ws://127.0.0.1:8080", "myJWTToken");
 
 eventhub.connect().then(res=>{
   eventhub.subscribe("test/#", function (data) {

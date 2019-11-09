@@ -1,15 +1,15 @@
-# eventhub.js
+# eventhub-jsclient
 [![Build Status](https://travis-ci.com/olesku/eventhub.js.svg?branch=master)](https://travis-ci.com/olesku/eventhub.js)
 
-eventhub.js is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
-It enables you to easily subscribe and publish to any eventhub server from the browser or Node.js.
+eventhub-jsclient is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
+It enables you to easily subscribe and publish to a eventhub server from the browser or Node.js.
 
 ## Installation
 ```bash
-$ npm i --save eventhub-client
+$ npm i --save eventhub-jsclient
 ```
 
-## Building browser bundle
+## Building bundle
 ```bash
 make
 ```
@@ -22,9 +22,9 @@ Look in the [examples](https://github.com/olesku/eventhub.js/tree/master/example
 
 **Subscribe to a topic**
 ```js
-import Eventhub from 'eventhub-client';
+const Eventhub = require('eventhub-jsclient');
 
-let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
+const eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 eventhub.connect().then(res => {
 	eventhub.subscribe("my/topic", function (msg) {
@@ -37,9 +37,9 @@ eventhub.connect().then(res => {
 
 **Subscribe to a topic and get all history events since a given timestamp or messageid**
 ```js
-import Eventhub from 'eventhub-client';
+const Eventhub = require('eventhub-jsclient');
 
-let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
+const eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 eventhub.connect().then(res => {
 	// Return all events since timestamp 1572811274719
@@ -57,9 +57,9 @@ eventhub.connect().then(res => {
 
 **Publish to a topic**
 ```js
-import Eventhub from 'eventhub-client';
+const Eventhub = require('eventhub-jsclient');
 
-let eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
+const eventhub = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 eventhub.connect().then(res => {
 	eventhub.subscribe("my/topic");

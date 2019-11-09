@@ -1,0 +1,7 @@
+node_modules/*
+.rts2*
+package-lock.json
+examples/*
+.travis.yml
+.gitignore
+.npmignore
