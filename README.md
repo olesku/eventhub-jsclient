@@ -9,13 +9,6 @@ It enables you to easily subscribe and publish to a eventhub server from the bro
 $ npm i --save eventhub-jsclient
 ```
 
-## Building bundle
-```bash
-make
-```
-
-You can then find the built bundles in the ```dist``` directory.
-
 ## Examples
 
 Look in the [examples](https://github.com/olesku/eventhub-jsclient/tree/master/examples) directory for more examples.
