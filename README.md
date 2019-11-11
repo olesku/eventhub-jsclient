@@ -52,7 +52,7 @@ const Eventhub = require('eventhub-jsclient');
 const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 evClient.connect().then(res => {
-	evClient.subscribe("my/topic");
+	evClient.publish("my/topic", "This is a test message!");
 }).catch(err => {
 	console.log(`Error connecting to Eventhub: ${err}`);
 });

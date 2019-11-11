@@ -1,6 +1,6 @@
 {
   "name": "eventhub-jsclient",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Eventhub.js is a JavaScript client library for Eventhub. It enables you to easily subscribe and publish to any eventhub server from the browser or Node.js.",
   "source": "src/eventhub.ts",
   "main": "dist/eventhub.js",
