@@ -1,4 +1,3 @@
-
 /*
 The MIT License (MIT)
 Copyright (c) 2019 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
@@ -30,7 +29,8 @@ enum RPCMethods {
   UNSUBSCRIBE     = 'unsubscribe',
   UNSUBSCRIBE_ALL = 'unsubscribeAll',
   LIST            = 'list',
-  HISTORY         = 'history', // Not implemented yet.
+  HISTORY         = 'history',
+  PING            = 'ping',
   DISCONNECT      = 'disconnect'
 }
 
@@ -38,26 +38,49 @@ class Subscription {
   topic: string
   rpcRequestId: number
   callback: SubscriptionCallback
+  lastRecvMessageId?: string
+}
+
+class PingRequest {
+  timestamp: Object
+  rpcRequestId: number
+}
+
+class ConnectionOptions {
+  pingInterval:   number    = 10000;
+  pingTimeout:    number    = 3000;
+  maxFailedPings: number    = 3;
+  reconnectInterval: number = 10000;
 }
 
 export default class Eventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
+  private _opts: ConnectionOptions;
+  private _isConnected: boolean;
   private _rpcResponseCounter: number;
   private _rpcCallbackList: Array<[number, RPCCallback]>;
   private _subscriptionCallbackList: Array<Subscription>;
+  private _sentPingsList: Array<PingRequest>;
+  private _pingTimer : any;
+  private _pingTimeOutTimer : any;
 
   /**
    * Constructor (new Eventhub).
    * @param url Eventhub websocket url.
    * @param token Authentication token.
    */
-  constructor (url: string, token?: string) {
+  constructor (url: string, token?: string, opts?: Object) {
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
+    this._sentPingsList = [];
     this._wsUrl = `${url}/?auth=${token}`;
     this._socket = undefined;
+    this._isConnected = false;
+    this._opts = new ConnectionOptions();
+
+    Object.assign(this._opts, opts);
   }
 
   /**
@@ -71,13 +94,105 @@ export default class Eventhub {
         this._socket.onmessage = this._parseRPCResponse.bind(this);
 
         this._socket.onopen = function() {
+          this._isConnected = true;
+          this._startPingMonitor();
           resolve(true);
-        };
+        }.bind(this);
 
         this._socket.onerror = function(err) {
-          reject(err);
+          if (this._isConnected) {
+            console.log("WebSocket connection error:", err);
+            this._isConnected = false;
+            this._reconnect();
+          } else {
+            reject(err);
+          }
         };
     });
+  }
+
+  /*
+   * Try to reconnect in a loop until we succeed.
+  */
+  private _reconnect() : void {
+    if (this._isConnected) return;
+
+    console.log("Trying to reconnect.");
+    clearInterval(this._pingTimer);
+    clearInterval(this._pingTimeOutTimer);
+
+    this._socket.close();
+    this._socket = undefined;
+    this._sentPingsList = [];
+
+    const reconnectInterval = this._opts.reconnectInterval;
+
+    this.connect().then(res => {
+      let subscriptions = this._subscriptionCallbackList.slice();
+      this._rpcResponseCounter = 0;
+      this._rpcCallbackList = [];
+      this._subscriptionCallbackList = [];
+
+      for (let sub of subscriptions) {
+        console.log("Resubscribing to", sub.topic, "Since:", sub.lastRecvMessageId);
+        this.subscribe(sub.topic, sub.callback, sub.lastRecvMessageId).then();
+      }
+    }).catch(err => {
+      console.log("Failed to reconnect. Retrying in", reconnectInterval, "ms.");
+      setTimeout(this._reconnect.bind(this), reconnectInterval);
+    });
+  }
+
+  /*
+  * Send pings to the server on the configured interval.
+  * Mark the client as disconnected if <_opts.maxFailedPings> pings fail.
+  * Also trigger the reconnect procedure.
+  */
+  private _startPingMonitor()  : void {
+    const pingInterval = this._opts.pingInterval;
+    const maxFailedPings = this._opts.maxFailedPings;
+
+    // Ping server each <pingInterval> second.
+    this._pingTimer = setInterval(function() {
+      if (!this._isConnected) {
+        return;
+      }
+
+      const pingReq : PingRequest = {
+        timestamp: Date.now(),
+        rpcRequestId: this._rpcResponseCounter + 1
+      };
+
+      this._sentPingsList.push(pingReq);
+      this._sendRPCRequest(RPCMethods.PING, []).then(pong => {
+        for (let i = 0; i < this._sentPingsList.length; i++) {
+          if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
+            /*console.log("Resolved ping with ID:", this._sentPingsList[i].rpcRequestId,
+            "Response time: ", Date.now() - this._sentPingsList[i].timestamp);*/
+            this._sentPingsList.splice(i, 1);
+          }
+        }
+      });
+    }.bind(this), pingInterval);
+
+    // Check that our pings is successfully ponged by the server.
+    // disconnect and reconnect if maxFailedPings is reached.
+    this._pingTimeOutTimer = setInterval(function() {
+      const now = Date.now();
+      let failedPingCount = 0;
+      for (let i = 0; i < this._sentPingsList.length; i++) {
+        if (now > (this._sentPingsList[i].timestamp + this._opts.pingTimeout)) {
+          //console.log("Ping id", this._sentPingsList[i].rpcRequestId, "timed out");
+          failedPingCount++;
+        }
+      }
+
+      if (failedPingCount >= maxFailedPings) {
+        console.log("Disconnected from server.");
+        this._isConnected = false;
+        this._reconnect();
+      }
+    }.bind(this), pingInterval);
   }
 
   /**
@@ -126,6 +241,7 @@ export default class Eventhub {
       if (responseObj.hasOwnProperty('result') && responseObj['result'].hasOwnProperty('message') && responseObj['result'].hasOwnProperty('topic')) {
         for (let subscription of this._subscriptionCallbackList) {
           if (subscription.rpcRequestId == responseObj['id']) {
+            subscription.lastRecvMessageId = responseObj['result']['id'];
             subscription.callback(responseObj['result']);
             return;
           }
@@ -277,3 +393,4 @@ export default class Eventhub {
     return this._sendRPCRequest(RPCMethods.LIST, []);
   }
 }
+
