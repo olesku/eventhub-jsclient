@@ -108,7 +108,7 @@ export default class Eventhub {
 
         this._socket.onerror = function(err) {
           if (this._isConnected) {
-            console.log("WebSocket connection error:", err);
+            console.log("Eventhub WebSocket connection error:", err);
             this._isConnected = false;
             this._reconnect();
           } else {
@@ -132,8 +132,6 @@ export default class Eventhub {
     if (this._isConnected) return;
     const reconnectInterval = this._opts.reconnectInterval;
 
-    console.log("Trying to reconnect.");
-
     if (this._socket.readyState != WebSocket.CLOSED &&
         this._socket.readyState != WebSocket.CLOSING) {
       this._socket.close();
@@ -152,11 +150,9 @@ export default class Eventhub {
       this._subscriptionCallbackList = [];
 
       for (let sub of subscriptions) {
-        console.log("Resubscribing to", sub.topic, "Since:", sub.lastRecvMessageId);
         this.subscribe(sub.topic, sub.callback, sub.lastRecvMessageId);
       }
     }).catch(err => {
-      console.log("Failed to reconnect. Retrying in", reconnectInterval, "ms.");
       setTimeout(this._reconnect.bind(this), reconnectInterval);
     });
   }
@@ -185,8 +181,6 @@ export default class Eventhub {
       this._sendRPCRequest(RPCMethods.PING, []).then(pong => {
         for (let i = 0; i < this._sentPingsList.length; i++) {
           if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
-            console.log("Resolved ping with ID:", this._sentPingsList[i].rpcRequestId,
-            "Response time: ", Date.now() - this._sentPingsList[i].timestamp);
             this._sentPingsList.splice(i, 1);
           }
         }
@@ -205,7 +199,6 @@ export default class Eventhub {
       }
 
       if (failedPingCount >= maxFailedPings) {
-        console.log("Disconnected from server.");
         this._isConnected = false;
         this._reconnect();
       }
