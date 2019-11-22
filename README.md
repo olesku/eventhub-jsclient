@@ -74,14 +74,13 @@ eventhub.listSubscriptions().then( subscroptions => {
 });
 ```
 
-## Reconnect on loss of connection
-If the client loses connection to the server it will try to reconnect with the server. When the connection is eventually regained all messages that has been lost during the disconnected period will be sent to the client.
+## Reconnection handling
+If the client loses connection with the server it will try to reconnect. When the connection is eventually regained all messages that has been lost during the disconnected period will be sent to the client before new ones.
 
 Some of this behaviour is configureable as the third parameter to the ```connect()``` method.
 
+*Default options:*
 ```
-Defaults:
-
 {
   pingInterval: 10000,      // Ping the server each 10 seconds.
   pingTimeout: 3000,        // Consider a ping as failed after 3 seconds.
