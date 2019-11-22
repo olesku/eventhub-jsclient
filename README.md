@@ -74,5 +74,22 @@ eventhub.listSubscriptions().then( subscroptions => {
 });
 ```
 
+## Reconnect on loss of connection
+If the client loses connection to the server it will try to reconnect with the server. When the connection is eventually regained all messages that has been lost during the disconnected period will be sent to the client.
+
+Some of this behaviour is configureable as the third parameter to the ```connect()``` method.
+
+```
+Defaults:
+
+{
+  pingInterval: 10000,      // Ping the server each 10 seconds.
+  pingTimeout: 3000,        // Consider a ping as failed after 3 seconds.
+  maxFailedPings: 3,        // How many lost pings before trying to reconnect.
+  reconnectInterval: 10000, // 10 seconds between each reconnect attempt.
+  disablePingCheck: false   // Disable pings and only rely on WebSocket 'onerror' event for detecting lost connection.
+}
+```
+
 # License
 eventhub-jsclient is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub-jsclient/blob/master/LICENSE).
