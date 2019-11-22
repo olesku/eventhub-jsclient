@@ -1,4 +1,3 @@
-
 /*
 The MIT License (MIT)
 Copyright (c) 2019 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
@@ -30,7 +29,8 @@ enum RPCMethods {
   UNSUBSCRIBE     = 'unsubscribe',
   UNSUBSCRIBE_ALL = 'unsubscribeAll',
   LIST            = 'list',
-  HISTORY         = 'history', // Not implemented yet.
+  HISTORY         = 'history',
+  PING            = 'ping',
   DISCONNECT      = 'disconnect'
 }
 
@@ -38,26 +38,52 @@ class Subscription {
   topic: string
   rpcRequestId: number
   callback: SubscriptionCallback
+  lastRecvMessageId?: string
+}
+
+class PingRequest {
+  timestamp: Object
+  rpcRequestId: number
+}
+
+class ConnectionOptions {
+  pingInterval:   number    = 10000;
+  pingTimeout:    number    = 3000;
+  maxFailedPings: number    = 3;
+  reconnectInterval: number = 10000;
+  disablePingCheck: boolean = false;
 }
 
 export default class Eventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
+  private _opts: ConnectionOptions;
+  private _isConnected: boolean;
+
   private _rpcResponseCounter: number;
   private _rpcCallbackList: Array<[number, RPCCallback]>;
   private _subscriptionCallbackList: Array<Subscription>;
+
+  private _sentPingsList: Array<PingRequest>;
+  private _pingTimer : any;
+  private _pingTimeOutTimer : any;
 
   /**
    * Constructor (new Eventhub).
    * @param url Eventhub websocket url.
    * @param token Authentication token.
    */
-  constructor (url: string, token?: string) {
+  constructor (url: string, token?: string, opts?: Object) {
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
+    this._sentPingsList = [];
     this._wsUrl = `${url}/?auth=${token}`;
     this._socket = undefined;
+    this._isConnected = false;
+    this._opts = new ConnectionOptions();
+
+    Object.assign(this._opts, opts);
   }
 
   /**
@@ -71,13 +97,112 @@ export default class Eventhub {
         this._socket.onmessage = this._parseRPCResponse.bind(this);
 
         this._socket.onopen = function() {
+          this._isConnected = true;
+
+          if (!this._opts.disablePingCheck) {
+            this._startPingMonitor();
+          }
+
           resolve(true);
-        };
+        }.bind(this);
 
         this._socket.onerror = function(err) {
-          reject(err);
-        };
+          if (this._isConnected) {
+            console.log("Eventhub WebSocket connection error:", err);
+            this._isConnected = false;
+            this._reconnect();
+          } else {
+            reject(err);
+          }
+        }.bind(this);
+
+        this._socket.onclose = function(err) {
+          if (this._isConnected) {
+            this._isConnected = false;
+            this._reconnect();
+          }
+        }.bind(this);
     });
+  }
+
+  /*
+   * Try to reconnect in a loop until we succeed.
+  */
+  private _reconnect() : void {
+    if (this._isConnected) return;
+    const reconnectInterval = this._opts.reconnectInterval;
+
+    if (this._socket.readyState != WebSocket.CLOSED &&
+        this._socket.readyState != WebSocket.CLOSING) {
+      this._socket.close();
+    }
+
+    if (!this._opts.disablePingCheck) {
+      clearInterval(this._pingTimer);
+      clearInterval(this._pingTimeOutTimer);
+      this._sentPingsList = [];
+    }
+
+    this.connect().then(res => {
+      let subscriptions = this._subscriptionCallbackList.slice();
+      this._rpcResponseCounter = 0;
+      this._rpcCallbackList = [];
+      this._subscriptionCallbackList = [];
+
+      for (let sub of subscriptions) {
+        this.subscribe(sub.topic, sub.callback, sub.lastRecvMessageId);
+      }
+    }).catch(err => {
+      setTimeout(this._reconnect.bind(this), reconnectInterval);
+    });
+  }
+
+  /*
+  * Send pings to the server on the configured interval.
+  * Mark the client as disconnected if <_opts.maxFailedPings> pings fail.
+  * Also trigger the reconnect procedure.
+  */
+  private _startPingMonitor()  : void {
+    const pingInterval = this._opts.pingInterval;
+    const maxFailedPings = this._opts.maxFailedPings;
+
+    // Ping server each <pingInterval> second.
+    this._pingTimer = setInterval(function() {
+      if (!this._isConnected) {
+        return;
+      }
+
+      const pingReq : PingRequest = {
+        timestamp: Date.now(),
+        rpcRequestId: this._rpcResponseCounter + 1
+      };
+
+      this._sentPingsList.push(pingReq);
+      this._sendRPCRequest(RPCMethods.PING, []).then(pong => {
+        for (let i = 0; i < this._sentPingsList.length; i++) {
+          if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
+            this._sentPingsList.splice(i, 1);
+          }
+        }
+      });
+    }.bind(this), pingInterval);
+
+    // Check that our pings is successfully ponged by the server.
+    // disconnect and reconnect if maxFailedPings is reached.
+    this._pingTimeOutTimer = setInterval(function() {
+      const now = Date.now();
+      let failedPingCount = 0;
+      for (let i = 0; i < this._sentPingsList.length; i++) {
+        if (now > (this._sentPingsList[i].timestamp + this._opts.pingTimeout)) {
+          failedPingCount++;
+        }
+      }
+
+      if (failedPingCount >= maxFailedPings) {
+        this._isConnected = false;
+        this._reconnect();
+      }
+    }.bind(this), pingInterval);
   }
 
   /**
@@ -97,6 +222,11 @@ export default class Eventhub {
     }
 
     return new Promise((resolve, reject) => {
+      if (this._socket.readyState != WebSocket.OPEN) {
+        reject(new Error("WebSocket is not connected."));
+        return;
+      }
+
       this._rpcCallbackList.push([this._rpcResponseCounter, function (err: string, resp: string) {
         if (err != null) {
           reject(err);
@@ -105,7 +235,11 @@ export default class Eventhub {
         }
       }.bind(this)]);
 
-      this._socket.send(JSON.stringify(requestObject));
+      try {
+        this._socket.send(JSON.stringify(requestObject));
+      } catch(err) {
+        reject(err);
+      }
     });
   }
 
@@ -126,6 +260,7 @@ export default class Eventhub {
       if (responseObj.hasOwnProperty('result') && responseObj['result'].hasOwnProperty('message') && responseObj['result'].hasOwnProperty('topic')) {
         for (let subscription of this._subscriptionCallbackList) {
           if (subscription.rpcRequestId == responseObj['id']) {
+            subscription.lastRecvMessageId = responseObj['result']['id'];
             subscription.callback(responseObj['result']);
             return;
           }
