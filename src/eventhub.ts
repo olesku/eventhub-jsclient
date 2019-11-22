@@ -51,6 +51,7 @@ class ConnectionOptions {
   pingTimeout:    number    = 3000;
   maxFailedPings: number    = 3;
   reconnectInterval: number = 10000;
+  disablePingCheck: boolean = false;
 }
 
 export default class Eventhub {
@@ -58,9 +59,11 @@ export default class Eventhub {
   private _socket: WebSocket;
   private _opts: ConnectionOptions;
   private _isConnected: boolean;
+
   private _rpcResponseCounter: number;
   private _rpcCallbackList: Array<[number, RPCCallback]>;
   private _subscriptionCallbackList: Array<Subscription>;
+
   private _sentPingsList: Array<PingRequest>;
   private _pingTimer : any;
   private _pingTimeOutTimer : any;
@@ -95,7 +98,11 @@ export default class Eventhub {
 
         this._socket.onopen = function() {
           this._isConnected = true;
-          this._startPingMonitor();
+
+          if (!this._opts.disablePingCheck) {
+            this._startPingMonitor();
+          }
+
           resolve(true);
         }.bind(this);
 
@@ -107,7 +114,14 @@ export default class Eventhub {
           } else {
             reject(err);
           }
-        };
+        }.bind(this);
+
+        this._socket.onclose = function(err) {
+          if (this._isConnected) {
+            this._isConnected = false;
+            this._reconnect();
+          }
+        }.bind(this);
     });
   }
 
@@ -116,16 +130,20 @@ export default class Eventhub {
   */
   private _reconnect() : void {
     if (this._isConnected) return;
+    const reconnectInterval = this._opts.reconnectInterval;
 
     console.log("Trying to reconnect.");
-    clearInterval(this._pingTimer);
-    clearInterval(this._pingTimeOutTimer);
 
-    this._socket.close();
-    this._socket = undefined;
-    this._sentPingsList = [];
+    if (this._socket.readyState != WebSocket.CLOSED &&
+        this._socket.readyState != WebSocket.CLOSING) {
+      this._socket.close();
+    }
 
-    const reconnectInterval = this._opts.reconnectInterval;
+    if (!this._opts.disablePingCheck) {
+      clearInterval(this._pingTimer);
+      clearInterval(this._pingTimeOutTimer);
+      this._sentPingsList = [];
+    }
 
     this.connect().then(res => {
       let subscriptions = this._subscriptionCallbackList.slice();
@@ -135,7 +153,7 @@ export default class Eventhub {
 
       for (let sub of subscriptions) {
         console.log("Resubscribing to", sub.topic, "Since:", sub.lastRecvMessageId);
-        this.subscribe(sub.topic, sub.callback, sub.lastRecvMessageId).then();
+        this.subscribe(sub.topic, sub.callback, sub.lastRecvMessageId);
       }
     }).catch(err => {
       console.log("Failed to reconnect. Retrying in", reconnectInterval, "ms.");
@@ -167,8 +185,8 @@ export default class Eventhub {
       this._sendRPCRequest(RPCMethods.PING, []).then(pong => {
         for (let i = 0; i < this._sentPingsList.length; i++) {
           if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
-            /*console.log("Resolved ping with ID:", this._sentPingsList[i].rpcRequestId,
-            "Response time: ", Date.now() - this._sentPingsList[i].timestamp);*/
+            console.log("Resolved ping with ID:", this._sentPingsList[i].rpcRequestId,
+            "Response time: ", Date.now() - this._sentPingsList[i].timestamp);
             this._sentPingsList.splice(i, 1);
           }
         }
@@ -182,7 +200,6 @@ export default class Eventhub {
       let failedPingCount = 0;
       for (let i = 0; i < this._sentPingsList.length; i++) {
         if (now > (this._sentPingsList[i].timestamp + this._opts.pingTimeout)) {
-          //console.log("Ping id", this._sentPingsList[i].rpcRequestId, "timed out");
           failedPingCount++;
         }
       }
@@ -212,6 +229,11 @@ export default class Eventhub {
     }
 
     return new Promise((resolve, reject) => {
+      if (this._socket.readyState != WebSocket.OPEN) {
+        reject(new Error("WebSocket is not connected."));
+        return;
+      }
+
       this._rpcCallbackList.push([this._rpcResponseCounter, function (err: string, resp: string) {
         if (err != null) {
           reject(err);
@@ -220,7 +242,11 @@ export default class Eventhub {
         }
       }.bind(this)]);
 
-      this._socket.send(JSON.stringify(requestObject));
+      try {
+        this._socket.send(JSON.stringify(requestObject));
+      } catch(err) {
+        reject(err);
+      }
     });
   }
 
@@ -393,4 +419,3 @@ export default class Eventhub {
     return this._sendRPCRequest(RPCMethods.LIST, []);
   }
 }
-
