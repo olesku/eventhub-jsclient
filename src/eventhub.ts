@@ -1,6 +1,6 @@
 /*
 The MIT License (MIT)
-Copyright (c) 2019 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
+Copyright (c) 2020 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -317,7 +317,7 @@ export default class Eventhub {
    * @param callback Callback to call when we receive a message the subscribed topic.
    * @returns Promise with success or callback.
    */
-  public subscribe(topic: string, callback: SubscriptionCallback, sinceEvent?: string) : Promise<any> {
+  public subscribe(topic: string, callback: SubscriptionCallback, opts?: Object) : Promise<any> {
     let subscribeRequest : Object = {
       "topic": topic
     };
@@ -328,15 +328,8 @@ export default class Eventhub {
       });
     }
 
-    if (typeof(sinceEvent) == 'string' && sinceEvent != "") {
-      let sinceEventValidator = new RegExp('^[0-9]+([-]{1}[0-9]+)?$');
-      if (!sinceEventValidator.exec(sinceEvent)) {
-        return new Promise((_, reject) => {
-          reject(new Error(`${sinceEvent} is a invalid message id.`));
-        });
-      }
-
-      subscribeRequest['sinceEvent'] = sinceEvent;
+    if (typeof(opts) !== 'undefined') {
+      subscribeRequest = Object.assign(subscribeRequest, opts);
     }
 
     // First check if we are already subscribed to the topic.
@@ -395,10 +388,14 @@ export default class Eventhub {
    * @param topic Topic to publish to.
    * @param message Message to publish.
    */
-  public publish(topic: string, message: string) : Promise<any> {
-    const publishRequest = {
+  public publish(topic: string, message: string, opts?: Object) : Promise<any> {
+    let publishRequest = {
       topic: topic,
       message: message
+    }
+
+    if (typeof(opts) !== 'undefined') {
+      publishRequest = Object.assign(publishRequest, opts);
     }
 
     return this._sendRPCRequest(RPCMethods.PUBLISH, publishRequest);
