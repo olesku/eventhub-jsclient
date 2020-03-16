@@ -36,13 +36,15 @@ evClient.connect().then(res => {
 	evClient.subscribe("my/topic", function (msg) {
 		console.log(`Topic: ${msg.topic}: Message ID: ${msg.id} Message: ${msg.message}`);
 	}, {
-		since: 1572811274719, // Specified in milliseconds since epoch.
+		since: 1572811274719, // Return all cached events since timestamp specified in milliseconds.
 		limit: 100 // Limit the amount of returned historical events to 100.
 	);
 }).catch(err => {
 	console.log(`Error connecting to Eventhub: ${err}`);
 });
 ```
+
+You can also get all cached events since a given event id using the ```sinceEventId: <eventid>``` option instead of ```since: <timestamp>```.
 
 **Publish to a topic**
 ```js
@@ -51,7 +53,8 @@ const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 evClient.connect().then(res => {
 	evClient.publish("my/topic", "This is a test message!", {
-		ttl: 3600 // This message expires from the cache after 1 hour.
+		ttl: 3600, // This message expires from the cache after 1 hour.
+		timestamp: new Date().getTime() // Timestamp to index message with. If not set receipt time will be used.
 	});
 }).catch(err => {
 	console.log(`Error connecting to Eventhub: ${err}`);
@@ -69,7 +72,7 @@ eventhub.unsubscribeAll();
 ```
 **List all current subscribed topics**
 ```js
-eventhub.listSubscriptions().then( subscroptions => {
+eventhub.listSubscriptions().then(subscriptions => {
 	console.log("Subscriptions:", subscriptions);
 });
 ```

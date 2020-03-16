@@ -150,7 +150,7 @@ export default class Eventhub {
       this._subscriptionCallbackList = [];
 
       for (let sub of subscriptions) {
-        this.subscribe(sub.topic, sub.callback, sub.lastRecvMessageId);
+        this.subscribe(sub.topic, sub.callback, { sinceEventId: sub.lastRecvMessageId });
       }
     }).catch(err => {
       setTimeout(this._reconnect.bind(this), reconnectInterval);
@@ -315,6 +315,7 @@ export default class Eventhub {
    * Subscribe to a topic pattern.
    * @param topic Topic to subscribe to.
    * @param callback Callback to call when we receive a message the subscribed topic.
+   * @param opts Options to send with the request.
    * @returns Promise with success or callback.
    */
   public subscribe(topic: string, callback: SubscriptionCallback, opts?: Object) : Promise<any> {
@@ -387,6 +388,7 @@ export default class Eventhub {
    * Publish a message.
    * @param topic Topic to publish to.
    * @param message Message to publish.
+   * @param opts Options to send with the request.
    */
   public publish(topic: string, message: string, opts?: Object) : Promise<any> {
     let publishRequest = {
