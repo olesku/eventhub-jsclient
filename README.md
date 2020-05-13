@@ -5,8 +5,15 @@ eventhub-jsclient is a JavaScript client library for [Eventhub](https://github.c
 It enables you to easily subscribe and publish to a eventhub server from the browser or Node.js.
 
 ## Installation
+
 ```bash
 $ npm i --save eventhub-jsclient
+```
+
+Or, if you're oldschool:
+
+```bash
+$ wget -a scripts/eventhub-jsclient.js https://github.com/olesku/eventhub-jsclient/blob/master/dist/eventhub.umd.js
 ```
 
 ## Examples
