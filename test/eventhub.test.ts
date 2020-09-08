@@ -5,7 +5,10 @@ const testServer = new Server({
   port: (Math.floor(Math.random() * (9000 - 8001 + 1)) + 8001)
 });
 
-const eventhub = new Eventhub(`ws://127.0.0.1:${testServer.options.port}`, "");
+const eventhub = new Eventhub(`ws://127.0.0.1:${testServer.options.port}`, "", {
+  retryPublish: true
+});
+
 let wsResponseResolve, subscribeCallbackResolve, wsClient = undefined;
 
 testServer.on('connection', function (ws) {
@@ -128,4 +131,73 @@ test("Test that unsubscribeAll unsubscribes all subscribed topics", () => {
   expect(eventhub.isSubscribed("testTopic2")).toEqual(false);
   expect(eventhub.isSubscribed("testTopic3")).toEqual(false);
   expect(eventhub.isSubscribed("testTopic4")).toEqual(false);
+});
+
+
+test('Test that publish() during a disconnect retains messages', async () => {
+  const testData = [
+    { topic: 'testTopic1', message: 'Foo' },
+    { topic: 'testTopic1', message: 'Bar' },
+    { topic: 'testTopic1', message: 'Baz' },
+    { topic: 'testTopic2', message: 'Hello' },
+    { topic: 'testTopic3', message: 'World' },
+    { topic: 'testTopic4', message: 'Sup' },
+  ]
+
+  const failingSrv = new Server({
+    port: (Math.floor(Math.random() * (9000 - 8001 + 1)) + 8001)
+  });
+
+  const ev = new Eventhub(`ws://127.0.0.1:${failingSrv.options.port}`, "", {
+    retryPublish: true,
+    reconnectInterval: 100,
+    pingTimeout: 200,
+    maxFailedPings: 2,
+    pingInterval: 200
+  });
+
+  await ev.connect().catch(err => {
+    fail(err);
+  });
+
+  for (let t of testData) {
+    if (!ev.isSubscribed(t.topic)) {
+      ev.subscribe(t.topic, () => {});
+    }
+  }
+
+  failingSrv.close();
+  await new Promise((r) => setTimeout(r, 1000));
+
+  for (let pub of testData) {
+    ev.publish(pub.topic, pub.message);
+  }
+
+  const newSrv = new Server({
+    port: failingSrv.options.port
+  });
+
+  var pRes : any;
+  const p = new Promise(res => {
+    pRes = res;
+  });
+
+  newSrv.on('connection', function (ws) {
+    let recvPublishes : Array<string> = [];
+
+    ws.on('message', (msg) => {
+      let obj = JSON.parse(msg.toString());
+      if (obj['method'] == "publish") {
+        recvPublishes.push(obj['params']);
+      }
+
+      if (recvPublishes.length == testData.length) {
+        expect(recvPublishes).toEqual(testData);
+        pRes();
+      }
+    });
+  });
+
+  await p;
+  newSrv.close();
 });
