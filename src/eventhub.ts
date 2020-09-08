@@ -51,6 +51,7 @@ class ConnectionOptions {
   pingTimeout:    number    = 3000;
   maxFailedPings: number    = 3;
   reconnectInterval: number = 10000;
+  retryPublish: boolean     = true;
   disablePingCheck: boolean = false;
 }
 
@@ -68,6 +69,8 @@ export default class Eventhub {
   private _pingTimer : any;
   private _pingTimeOutTimer : any;
 
+  private _retainPublishList : Array<Object>;
+
   /**
    * Constructor (new Eventhub).
    * @param url Eventhub websocket url.
@@ -78,6 +81,7 @@ export default class Eventhub {
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
     this._sentPingsList = [];
+    this._retainPublishList = [];
     this._wsUrl = `${url}/?auth=${token}`;
     this._socket = undefined;
     this._isConnected = false;
@@ -149,9 +153,18 @@ export default class Eventhub {
       this._rpcCallbackList = [];
       this._subscriptionCallbackList = [];
 
+      // Resubscribe to all subscriptions.
       for (let sub of subscriptions) {
         this.subscribe(sub.topic, sub.callback, { sinceEventId: sub.lastRecvMessageId });
       }
+
+      // Publish all messages retained during the disconnected period.
+      for (let pub of this._retainPublishList) {
+        this._sendRPCRequest(RPCMethods.PUBLISH, pub);
+      }
+
+      this._retainPublishList = [];
+
     }).catch(err => {
       setTimeout(this._reconnect.bind(this), reconnectInterval);
     });
@@ -398,6 +411,17 @@ export default class Eventhub {
 
     if (typeof(opts) !== 'undefined') {
       publishRequest = Object.assign(publishRequest, opts);
+    }
+
+    // Retain published messages if we are disconnected from the server
+    // during a publish.
+    if (this._opts.retryPublish) {
+      if (!this._isConnected || this._socket.readyState != WebSocket.OPEN) {
+        this._retainPublishList.push(publishRequest);
+        return new Promise((resolve) => {
+          resolve(true);
+        });
+      }
     }
 
     return this._sendRPCRequest(RPCMethods.PUBLISH, publishRequest);
