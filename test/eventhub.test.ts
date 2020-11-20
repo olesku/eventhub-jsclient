@@ -136,10 +136,14 @@ test("Test that unsubscribeAll unsubscribes all subscribed topics", () => {
   expect(eventhub.isSubscribed("testTopic4")).toEqual(false);
 });
 
-test('Test that reconnect event is emitted', () => {
+test('Test that reconnect event is emitted', (done) => {
+  expect.assertions(1);
+
   testServer.close();
 
   setTimeout(()=>{
     expect(emitEventSpy).toHaveBeenCalledWith('reconnect');
+
+    done();
   }, 100)
 });
