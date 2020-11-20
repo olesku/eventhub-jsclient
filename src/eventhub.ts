@@ -19,6 +19,7 @@ THE SOFTWARE.
 */
 
 import WebSocket from 'isomorphic-ws';
+import EventEmitter from 'events';
 
 declare type RPCCallback = (err: string, message: string) => void;
 declare type SubscriptionCallback = (message: any) => void;
@@ -32,6 +33,13 @@ enum RPCMethods {
   HISTORY         = 'history',
   PING            = 'ping',
   DISCONNECT      = 'disconnect'
+}
+
+enum LifecycleEvents {
+  CONNECT         = 'connect',
+  RECONNECT       = 'reconnect',
+  DISCONNECT      = 'disconnect',
+  OFFLINE         = 'offline',
 }
 
 class Subscription {
@@ -54,7 +62,11 @@ class ConnectionOptions {
   disablePingCheck: boolean = false;
 }
 
-export default class Eventhub {
+declare interface IEventhub {
+  on(event: LifecycleEvents, listener: Function): this;
+}
+
+export default class Eventhub extends EventEmitter implements IEventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
   private _opts: ConnectionOptions;
@@ -74,6 +86,8 @@ export default class Eventhub {
    * @param token Authentication token.
    */
   constructor (url: string, token?: string, opts?: Object) {
+    super();
+
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
@@ -103,6 +117,8 @@ export default class Eventhub {
             this._startPingMonitor();
           }
 
+          this.emit(LifecycleEvents.CONNECT);
+
           resolve(true);
         }.bind(this);
 
@@ -110,8 +126,13 @@ export default class Eventhub {
           if (this._isConnected) {
             console.log("Eventhub WebSocket connection error:", err);
             this._isConnected = false;
+
+            this.emit(LifecycleEvents.DISCONNECT, err);
+
             this._reconnect();
           } else {
+            this.emit(LifecycleEvents.OFFLINE, err);
+
             reject(err);
           }
         }.bind(this);
@@ -121,6 +142,8 @@ export default class Eventhub {
             this._isConnected = false;
             this._reconnect();
           }
+
+          this.emit(LifecycleEvents.OFFLINE, err);
         }.bind(this);
     });
   }
@@ -130,6 +153,9 @@ export default class Eventhub {
   */
   private _reconnect() : void {
     if (this._isConnected) return;
+
+    this.emit(LifecycleEvents.RECONNECT)
+
     const reconnectInterval = this._opts.reconnectInterval;
 
     if (this._socket.readyState != WebSocket.CLOSED &&
