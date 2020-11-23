@@ -21,6 +21,8 @@ testServer.on('connection', function (ws) {
 
 afterAll(() => {
   testServer.close();
+
+  jest.clearAllMocks();
 });
 
 // Wait for a websocket response.
@@ -37,10 +39,14 @@ function waitForSubscribeCallback() : Promise<any> {
   });
 }
 
+const emitEventSpy = jest.spyOn(eventhub, 'emit');
+
 test('That we can connect', async () => {
   await eventhub.connect().catch(err => {
     fail(err);
   });
+
+  expect(emitEventSpy).toHaveBeenCalledWith('connect');
 });
 
 test('Test that subscribe() sends correct RPC request to server', async () => {
@@ -128,4 +134,16 @@ test("Test that unsubscribeAll unsubscribes all subscribed topics", () => {
   expect(eventhub.isSubscribed("testTopic2")).toEqual(false);
   expect(eventhub.isSubscribed("testTopic3")).toEqual(false);
   expect(eventhub.isSubscribed("testTopic4")).toEqual(false);
+});
+
+test('Test that reconnect event is emitted', (done) => {
+  expect.assertions(1);
+
+  testServer.close();
+
+  setTimeout(()=>{
+    expect(emitEventSpy).toHaveBeenCalledWith('reconnect');
+
+    done();
+  }, 100)
 });
