@@ -100,5 +100,26 @@ Some of this behaviour is configureable as the third parameter to the ```connect
 }
 ```
 
+## Lifecycle events
+Library provides lifecycle events. You can subscribe for these events with the below syntax
+
+```javascript
+const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
+
+evClient.on('connect', callback)
+``` 
+
+#### Event `'connect'`
+Emitted on successful (re)connection.
+
+#### Event `'reconnect'`
+Emitted when a reconnect starts.
+
+#### Event `'disconnect'`
+Emitted after a disconnection.
+
+#### Event `'offline'`
+Emitted when the client goes offline.
+
 # License
 eventhub-jsclient is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub-jsclient/blob/master/LICENSE).
