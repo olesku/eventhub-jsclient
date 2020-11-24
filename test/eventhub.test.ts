@@ -178,8 +178,9 @@ test('Test that publish() during a disconnect retains messages', async () => {
   });
 
   var pRes : any;
-  const p = new Promise(res => {
-    pRes = res;
+  const p = new Promise((resolve, reject) => {
+    pRes = resolve;
+    setTimeout(reject, 3000);
   });
 
   newSrv.on('connection', function (ws) {
@@ -198,6 +199,9 @@ test('Test that publish() during a disconnect retains messages', async () => {
     });
   });
 
-  await p;
+  await p.catch((r) => {
+    fail("Timeout waiting for retained messages.");
+  });
+
   newSrv.close();
 });

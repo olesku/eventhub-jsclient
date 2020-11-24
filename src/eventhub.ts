@@ -47,12 +47,13 @@ class PingRequest {
 }
 
 class ConnectionOptions {
-  pingInterval:   number    = 10000;
-  pingTimeout:    number    = 3000;
-  maxFailedPings: number    = 3;
-  reconnectInterval: number = 10000;
-  retryPublish: boolean     = true;
-  disablePingCheck: boolean = false;
+  pingInterval:   number        = 10000;
+  pingTimeout:    number        = 3000;
+  maxFailedPings: number        = 3;
+  reconnectInterval: number     = 10000;
+  retryPublish: boolean         = true;
+  maxRetainedPublish : number   = 1000;
+  disablePingCheck: boolean     = false;
 }
 
 export default class Eventhub {

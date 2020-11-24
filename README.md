@@ -97,7 +97,7 @@ Some of this behaviour is configureable as the third parameter to the ```connect
   maxFailedPings: 3,        // How many lost pings before trying to reconnect.
   reconnectInterval: 10000, // 10 seconds between each reconnect attempt.
   disablePingCheck: false,  // Disable pings and only rely on WebSocket 'onerror' event for detecting lost connection.
-	retryPublish: true				// If connection to server is lost retain and resend all published messages during the downtime when the connection comes back.
+  retryPublish: true		// If connection to server is lost retain and resend all published messages during the downtime when the connection comes back.
 }
 ```
 
