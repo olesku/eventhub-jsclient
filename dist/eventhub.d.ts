@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import events from "events";
+import EventEmitter from 'events';
 declare type SubscriptionCallback = (message: any) => void;
 declare enum LifecycleEvents {
     CONNECT = "connect",
@@ -10,7 +10,7 @@ declare enum LifecycleEvents {
 declare interface IEventhub {
     on(event: LifecycleEvents, listener: Function): this;
 }
-export default class Eventhub extends events.EventEmitter implements IEventhub {
+export default class Eventhub extends EventEmitter implements IEventhub {
     private _wsUrl;
     private _socket;
     private _opts;
@@ -81,5 +81,9 @@ export default class Eventhub extends events.EventEmitter implements IEventhub {
      * @return Array containing current subscribed topics.
      */
     listSubscriptions(): Promise<any>;
+    /**
+     * Close connection to Eventhub
+     */
+    disconnect(): Promise<any>;
 }
 export {};
