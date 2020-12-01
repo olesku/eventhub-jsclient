@@ -12,7 +12,7 @@
     "build-node": "microbundle --name Eventhub --target node --format cjs,es",
     "build-web": "microbundle --name Eventhub --target web --format umd",
     "build": "npm run build-node && npm run build-web",
-    "test": "jest",
+    "test": "jest --forceExit",
     "test-dev": "jest --watch --verbose false",
     "dev": "microbundle watch --name Eventhub"
   },
