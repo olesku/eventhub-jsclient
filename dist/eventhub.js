@@ -1,7 +1,7 @@
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var WebSocket = _interopDefault(require('isomorphic-ws'));
-var events = _interopDefault(require('events'));
+var EventEmitter = _interopDefault(require('events'));
 
 /*
 The MIT License (MIT)
@@ -52,9 +52,9 @@ var ConnectionOptions = function ConnectionOptions() {
   this.disablePingCheck = false;
 };
 
-var Eventhub = /*@__PURE__*/(function (superclass) {
+var Eventhub = /*@__PURE__*/(function (EventEmitter$$1) {
   function Eventhub(url, token, opts) {
-    superclass.call(this);
+    EventEmitter$$1.call(this);
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
@@ -66,8 +66,8 @@ var Eventhub = /*@__PURE__*/(function (superclass) {
     Object.assign(this._opts, opts);
   }
 
-  if ( superclass ) Eventhub.__proto__ = superclass;
-  Eventhub.prototype = Object.create( superclass && superclass.prototype );
+  if ( EventEmitter$$1 ) Eventhub.__proto__ = EventEmitter$$1;
+  Eventhub.prototype = Object.create( EventEmitter$$1 && EventEmitter$$1.prototype );
   Eventhub.prototype.constructor = Eventhub;
   /**
    * Connect to eventhub.
@@ -83,37 +83,36 @@ var Eventhub = /*@__PURE__*/(function (superclass) {
       this$1._socket.onmessage = this$1._parseRPCResponse.bind(this$1);
 
       this$1._socket.onopen = function () {
+        this.emit(LifecycleEvents.CONNECT);
         this._isConnected = true;
 
         if (!this._opts.disablePingCheck) {
           this._startPingMonitor();
         }
 
-        this.emit(LifecycleEvents.CONNECT);
         resolve(true);
       }.bind(this$1);
 
       this$1._socket.onerror = function (err) {
+        this.emit(LifecycleEvents.OFFLINE, err);
+
         if (this._isConnected) {
           console.log("Eventhub WebSocket connection error:", err);
           this._isConnected = false;
-          this.emit(LifecycleEvents.DISCONNECT, err);
 
           this._reconnect();
         } else {
-          this.emit(LifecycleEvents.OFFLINE, err);
           reject(err);
         }
       }.bind(this$1);
 
       this$1._socket.onclose = function (err) {
         if (this._isConnected) {
+          this.emit(LifecycleEvents.OFFLINE, err);
           this._isConnected = false;
 
           this._reconnect();
         }
-
-        this.emit(LifecycleEvents.OFFLINE, err);
       }.bind(this$1);
     });
   };
@@ -433,9 +432,22 @@ var Eventhub = /*@__PURE__*/(function (superclass) {
   Eventhub.prototype.listSubscriptions = function listSubscriptions () {
     return this._sendRPCRequest(RPCMethods.LIST, []);
   };
+  /**
+   * Close connection to Eventhub
+   */
+
+
+  Eventhub.prototype.disconnect = function disconnect () {
+    this._isConnected = false;
+
+    var response = this._sendRPCRequest(RPCMethods.DISCONNECT, []);
+
+    this.emit(LifecycleEvents.DISCONNECT);
+    return response;
+  };
 
   return Eventhub;
-}(events.EventEmitter));
+}(EventEmitter));
 
 module.exports = Eventhub;
 //# sourceMappingURL=eventhub.js.map

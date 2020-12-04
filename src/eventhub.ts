@@ -111,39 +111,37 @@ export default class Eventhub extends EventEmitter implements IEventhub {
         this._socket.onmessage = this._parseRPCResponse.bind(this);
 
         this._socket.onopen = function() {
+          this.emit(LifecycleEvents.CONNECT);
+
           this._isConnected = true;
 
           if (!this._opts.disablePingCheck) {
             this._startPingMonitor();
           }
 
-          this.emit(LifecycleEvents.CONNECT);
-
           resolve(true);
         }.bind(this);
 
         this._socket.onerror = function(err) {
+          this.emit(LifecycleEvents.OFFLINE, err);
+
           if (this._isConnected) {
             console.log("Eventhub WebSocket connection error:", err);
             this._isConnected = false;
 
-            this.emit(LifecycleEvents.DISCONNECT, err);
-
             this._reconnect();
           } else {
-            this.emit(LifecycleEvents.OFFLINE, err);
-
             reject(err);
           }
         }.bind(this);
 
         this._socket.onclose = function(err) {
           if (this._isConnected) {
+            this.emit(LifecycleEvents.OFFLINE, err);
+
             this._isConnected = false;
             this._reconnect();
           }
-
-          this.emit(LifecycleEvents.OFFLINE, err);
         }.bind(this);
     });
   }
@@ -435,5 +433,18 @@ export default class Eventhub extends EventEmitter implements IEventhub {
    */
   public listSubscriptions() : Promise<any> {
     return this._sendRPCRequest(RPCMethods.LIST, []);
+  }
+
+  /**
+   * Close connection to Eventhub
+   */
+  public disconnect() : Promise<any> {
+    this._isConnected = false;
+
+    const response = this._sendRPCRequest(RPCMethods.DISCONNECT, []);
+
+    this.emit(LifecycleEvents.DISCONNECT);
+
+    return response;
   }
 }

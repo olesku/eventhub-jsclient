@@ -77,6 +77,12 @@ eventhub.unsubscribe("my/topic");
 ```js
 eventhub.unsubscribeAll();
 ```
+
+**Close connection to client**
+```js
+eventhub.disconnect();
+```
+
 **List all current subscribed topics**
 ```js
 eventhub.listSubscriptions().then(subscriptions => {
@@ -116,7 +122,7 @@ Emitted on successful (re)connection.
 Emitted when a reconnect starts.
 
 #### Event `'disconnect'`
-Emitted after a disconnection.
+Emitted after a connection is being close.
 
 #### Event `'offline'`
 Emitted when the client goes offline.
