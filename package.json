@@ -9,7 +9,7 @@
   "unpkg": "dist/eventhub.umd.js",
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
-    "build-node": "microbundle --name Eventhub --target node --format cjs,es",
+    "build-node": "microbundle --name Eventhub --target node --format cjs,es --external events,isomorphic-ws",
     "build-web": "microbundle --name Eventhub --target web --format umd",
     "build": "npm run build-node && npm run build-web",
     "test": "jest --forceExit",
