@@ -380,8 +380,9 @@ export default class Eventhub extends EventEmitter implements IEventhub {
   /**
    * Unsubscribe to one or more topic patterns.
    * @param topics Array of topics or single topic to unsubscribe from.
+   * @param callback A specific callback to unsubscribe
    */
-  public unsubscribe(topics: Array<string>|string) : void {
+  public unsubscribe(topics: Array<string>|string, callback?: SubscriptionCallback) : void {
     let topicList: Array<string> = [];
 
     if (typeof(topics) == 'string') {
@@ -389,18 +390,22 @@ export default class Eventhub extends EventEmitter implements IEventhub {
     } else {
       topicList = topics;
     }
+    if (!topicList.length) return;
 
-    if (topicList.length > 0) {
-      for (let topic of topicList) {
-        for (let i = 0; i < this._subscriptionCallbackList.length; i++) {
-          if (topic == this._subscriptionCallbackList[i].topic) {
-            this._subscriptionCallbackList.splice(i, 1);
-          }
+    const unsubTopics = new Set(topicList);
+    for (let topic of topicList) {
+      for (let i = 0; i < this._subscriptionCallbackList.length; i++) {
+        const subscription = this._subscriptionCallbackList[i];
+        if (topic === subscription.topic) {
+          if (callback) {
+              if (callback === subscription.callback) this._subscriptionCallbackList.splice(i, 1);
+              else unsubTopics.delete(topic);
+          } else this._subscriptionCallbackList.splice(i, 1);
         }
       }
-
-      this._sendRPCRequest(RPCMethods.UNSUBSCRIBE, topicList);
     }
+
+    this._sendRPCRequest(RPCMethods.UNSUBSCRIBE, Array.from(unsubTopics));
   }
 
   /**
