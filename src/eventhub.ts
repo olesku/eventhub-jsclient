@@ -146,6 +146,10 @@ export default class Eventhub extends EventEmitter implements IEventhub {
     });
   }
 
+  get isConnected() {
+      return this._isConnected;
+  }
+
   /*
    * Try to reconnect in a loop until we succeed.
   */
