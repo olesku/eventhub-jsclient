@@ -1,5 +1,5 @@
 # eventhub-jsclient
-[![Build Status](https://travis-ci.com/olesku/eventhub-jsclient.svg?branch=master)](https://travis-ci.com/olesku/eventhub-jsclient)
+[![CI](https://github.com/olesku/eventhub-jsclient/actions/workflows/main.yml/badge.svg)](https://github.com/olesku/eventhub-jsclient/actions/workflows/main.yml)
 
 eventhub-jsclient is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
 It enables you to easily subscribe and publish to a eventhub server from the browser or Node.js.
