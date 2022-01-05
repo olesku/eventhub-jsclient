@@ -66,7 +66,7 @@ declare interface IEventhub {
   on(event: LifecycleEvents, listener: Function): this;
 }
 
-export default class Eventhub extends EventEmitter implements IEventhub {
+class Eventhub extends EventEmitter implements IEventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
   private _opts: ConnectionOptions;
@@ -448,3 +448,5 @@ export default class Eventhub extends EventEmitter implements IEventhub {
     return response;
   }
 }
+
+export default Eventhub;
