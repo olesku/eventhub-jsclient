@@ -1,6 +1,6 @@
 /*
 The MIT License (MIT)
-Copyright (c) 2020 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
+Copyright (c) 2022 Ole Fredrik Skudsvik <ole.skudsvik@gmail.com>
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -31,6 +31,9 @@ enum RPCMethods {
   UNSUBSCRIBE_ALL = 'unsubscribeAll',
   LIST            = 'list',
   HISTORY         = 'history',
+  GET             = 'get',
+  SET             = 'set',
+  DEL             = 'del',
   PING            = 'ping',
   DISCONNECT      = 'disconnect'
 }
@@ -433,6 +436,39 @@ class Eventhub extends EventEmitter implements IEventhub {
    */
   public listSubscriptions() : Promise<any> {
     return this._sendRPCRequest(RPCMethods.LIST, []);
+  }
+
+  /**
+   * Get key from key/value store.
+   * @param key Key to fetch.
+   */
+  public get(key: string) : Promise<any> {
+    return this._sendRPCRequest(RPCMethods.GET, { key: key });
+  }
+
+  /**
+   * Set key in key/value store.
+   * @param key Key to set.
+   */
+  public set(key: string, value: string, ttl?: number) : Promise<any> {
+    let setRequest = {
+      key: key,
+      value: value
+    }
+
+    if (typeof(ttl) !== 'undefined' && ttl > 0) {
+      setRequest['ttl'] = ttl;
+    }
+
+    return this._sendRPCRequest(RPCMethods.SET, setRequest);
+  }
+
+  /**
+   * Delete key from key/value store.
+   * @param key Key to delete.
+   */
+  public del(key: string) : Promise<any> {
+    return this._sendRPCRequest(RPCMethods.DEL, { key: key });
   }
 
   /**
