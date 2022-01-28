@@ -221,3 +221,70 @@ test('Test that reconnect event is emitted', (done) => {
     done();
   }, 100)
 });
+
+test('Test that get() sends correct RPC request', async () => {
+  expect.assertions(1);
+
+  eventhub.get("foo");
+  const resp = await waitForWSResponse();
+
+  expect(resp).toEqual({
+    id: 1,
+    jsonrpc: "2.0",
+    method: "get",
+    params: {
+      key: "foo",
+    }
+  });
+});
+
+test('Test that set() without ttl sends correct RPC request', async () => {
+  expect.assertions(1);
+
+  eventhub.set("foo", "bar");
+  const resp = await waitForWSResponse();
+
+  expect(resp).toEqual({
+    id: 1,
+    jsonrpc: "2.0",
+    method: "set",
+    params: {
+      key: "foo",
+      value: "bar"
+    }
+  });
+});
+
+test('Test that set() with ttl sends correct RPC request', async () => {
+  expect.assertions(1);
+
+  eventhub.set("foo", "bar", 60);
+  const resp = await waitForWSResponse();
+
+  expect(resp).toEqual({
+    id: 1,
+    jsonrpc: "2.0",
+    method: "set",
+    params: {
+      key: "foo",
+      value: "bar",
+      ttl: 60
+    }
+  });
+});
+
+test('Test that del() sends correct RPC request', async () => {
+  expect.assertions(1);
+
+  eventhub.del("foo");
+  const resp = await waitForWSResponse();
+
+  expect(resp).toEqual({
+    id: 1,
+    jsonrpc: "2.0",
+    method: "del",
+    params: {
+      key: "foo",
+    }
+  });
+});
