@@ -28,7 +28,7 @@ beforeEach(async () => {
 
     await eventhub.connect();
 
-    emitEventSpy = jest.spyOn(eventhub, 'emit');
+    emitEventSpy = jest.spyOn(eventhub, '_emit');
 });
 
 afterEach(jest.clearAllMocks);

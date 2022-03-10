@@ -19,7 +19,7 @@ THE SOFTWARE.
 */
 
 import WebSocket from 'isomorphic-ws';
-import EventEmitter from 'events';
+import mitt, { Emitter, Handler } from 'mitt';
 
 declare type RPCCallback = (err: string, message: string) => void;
 declare type SubscriptionCallback = (message: any) => void;
@@ -66,10 +66,9 @@ class ConnectionOptions {
 }
 
 declare interface IEventhub {
-  on(event: LifecycleEvents, listener: Function): this;
 }
 
-class Eventhub extends EventEmitter implements IEventhub {
+class Eventhub implements IEventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
   private _opts: ConnectionOptions;
@@ -82,6 +81,12 @@ class Eventhub extends EventEmitter implements IEventhub {
   private _sentPingsList: Array<PingRequest>;
   private _pingTimer : any;
   private _pingTimeOutTimer : any;
+  private _emitter : Emitter<{
+        [LifecycleEvents.CONNECT]: void;
+        [LifecycleEvents.OFFLINE]: Error;
+        [LifecycleEvents.RECONNECT]: void;
+        [LifecycleEvents.DISCONNECT]: void
+    }>;
 
   /**
    * Constructor (new Eventhub).
@@ -89,8 +94,6 @@ class Eventhub extends EventEmitter implements IEventhub {
    * @param token Authentication token.
    */
   constructor (url: string, token?: string, opts?: Object) {
-    super();
-
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
@@ -99,6 +102,7 @@ class Eventhub extends EventEmitter implements IEventhub {
     this._socket = undefined;
     this._isConnected = false;
     this._opts = new ConnectionOptions();
+    this._emitter = mitt(); // event emitter
 
     Object.assign(this._opts, opts);
   }
@@ -114,7 +118,7 @@ class Eventhub extends EventEmitter implements IEventhub {
         this._socket.onmessage = this._parseRPCResponse.bind(this);
 
         this._socket.onopen = function() {
-          this.emit(LifecycleEvents.CONNECT);
+          this._emit(LifecycleEvents.CONNECT);
 
           this._isConnected = true;
 
@@ -125,8 +129,8 @@ class Eventhub extends EventEmitter implements IEventhub {
           resolve(true);
         }.bind(this);
 
-        this._socket.onerror = function(err) {
-          this.emit(LifecycleEvents.OFFLINE, err);
+        this._socket.onerror = function(err: Error) {
+          this._emit(LifecycleEvents.OFFLINE, err);
 
           if (this._isConnected) {
             console.log("Eventhub WebSocket connection error:", err);
@@ -138,9 +142,9 @@ class Eventhub extends EventEmitter implements IEventhub {
           }
         }.bind(this);
 
-        this._socket.onclose = function(err) {
+        this._socket.onclose = function(err: Error) {
           if (this._isConnected) {
-            this.emit(LifecycleEvents.OFFLINE, err);
+            this._emit(LifecycleEvents.OFFLINE, err);
 
             this._isConnected = false;
             this._reconnect();
@@ -155,7 +159,7 @@ class Eventhub extends EventEmitter implements IEventhub {
   private _reconnect() : void {
     if (this._isConnected) return;
 
-    this.emit(LifecycleEvents.RECONNECT)
+    this._emit(LifecycleEvents.RECONNECT)
 
     const reconnectInterval = this._opts.reconnectInterval;
 
@@ -479,9 +483,33 @@ class Eventhub extends EventEmitter implements IEventhub {
 
     const response = this._sendRPCRequest(RPCMethods.DISCONNECT, []);
 
-    this.emit(LifecycleEvents.DISCONNECT);
+    this._emit(LifecycleEvents.DISCONNECT);
 
     return response;
+  }
+
+  /**
+   * Emit event
+   */
+  private _emit(event: LifecycleEvents, data?: any): this {
+      this._emitter.emit(event, data);
+      return this;
+  }
+
+  /**
+   * Add event handler
+   */
+  public on(event: LifecycleEvents, listener: Handler): this {
+      this._emitter.on(event, listener);
+      return this;
+  }
+
+  /**
+   * Remove event handler
+   */
+  public off(event: LifecycleEvents, listener: Handler): this {
+      this._emitter.off(event, listener);
+      return this;
   }
 }
 

@@ -10,8 +10,9 @@
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
     "build-node": "microbundle --name Eventhub --target node --format cjs,es --external events,isomorphic-ws",
-    "build-web": "microbundle --name Eventhub --target web --format umd",
-    "build": "npm run build-node && npm run build-web",
+    "build-module": "microbundle --name Eventhub --target node --compress --format es",
+    "build-web": "microbundle --name Eventhub --target web --format umd --external none",
+    "build": "npm run build-node && npm run build-module && npm run build-web",
     "test": "jest --forceExit",
     "test-dev": "jest --watch --verbose false",
     "dev": "microbundle watch --name Eventhub"
@@ -24,17 +25,21 @@
   "license": "MIT",
   "homepage": "https://github.com/olesku/eventhub-jsclient",
   "dependencies": {
-    "@types/ws": "^6.0.3",
+    "@types/ws": "^6.0.4",
     "isomorphic-ws": "^4.0.1",
-    "ws": "^7.2.0"
+    "mitt": "^3.0.0"
   },
   "devDependencies": {
-    "events": "^3.2.0",
-    "@types/jest": "^24.0.23",
-    "@types/node": "^12.12.11",
+    "@types/jest": "^24.9.1",
+    "@types/node": "^12.20.4",
     "jest": "^24.9.0",
-    "microbundle": "^0.11.0",
-    "ts-jest": "^24.2.0",
-    "typescript": "^3.7.2"
-  }
+    "microbundle": "^0.13.0",
+    "ts-jest": "^24.3.0",
+    "typescript": "^3.9.9",
+    "ws": "^7.4.3"
+  },
+  "mangle": {
+    "regex": "^_"
+  },
+  "browserslist": ["cover 90% in NO", "not dead"]
 }
