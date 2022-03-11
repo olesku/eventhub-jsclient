@@ -18,55 +18,66 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-import WebSocket from 'isomorphic-ws';
+import WebSocket, { MessageEvent, ErrorEvent, CloseEvent } from 'isomorphic-ws';
 import mitt, { Emitter, Handler } from 'mitt';
 
-declare type RPCCallback = (err: string, message: string) => void;
+declare type RPCCallback = (err: string, message: any) => void;
 declare type SubscriptionCallback = (message: any) => void;
 
-enum RPCMethods {
-  PUBLISH         = "publish",
-  SUBSCRIBE       = 'subscribe',
-  UNSUBSCRIBE     = 'unsubscribe',
+const enum RPCMethods {
+  PUBLISH = 'publish',
+  SUBSCRIBE = 'subscribe',
+  UNSUBSCRIBE = 'unsubscribe',
   UNSUBSCRIBE_ALL = 'unsubscribeAll',
-  LIST            = 'list',
-  HISTORY         = 'history',
-  GET             = 'get',
-  SET             = 'set',
-  DEL             = 'del',
-  PING            = 'ping',
-  DISCONNECT      = 'disconnect'
+  LIST = 'list',
+  HISTORY = 'history',
+  GET = 'get',
+  SET = 'set',
+  DEL = 'del',
+  PING = 'ping',
+  DISCONNECT = 'disconnect',
 }
 
-enum LifecycleEvents {
-  CONNECT         = 'connect',
-  RECONNECT       = 'reconnect',
-  DISCONNECT      = 'disconnect',
-  OFFLINE         = 'offline',
+const enum LifecycleEvents {
+  CONNECT = 'connect',
+  RECONNECT = 'reconnect',
+  DISCONNECT = 'disconnect',
+  OFFLINE = 'offline',
 }
 
-class Subscription {
-  topic: string
-  rpcRequestId: number
-  callback: SubscriptionCallback
-  lastRecvMessageId?: string
+interface Subscription {
+  topic: string;
+  rpcRequestId: number;
+  callback: SubscriptionCallback;
+  lastRecvMessageId?: string;
 }
 
-class PingRequest {
-  timestamp: Object
-  rpcRequestId: number
+interface PingRequest {
+  timestamp: number;
+  rpcRequestId: number;
 }
 
 class ConnectionOptions {
-  pingInterval:   number    = 10000;
-  pingTimeout:    number    = 3000;
-  maxFailedPings: number    = 3;
+  pingInterval: number = 10000;
+  pingTimeout: number = 3000;
+  maxFailedPings: number = 3;
   reconnectInterval: number = 10000;
   disablePingCheck: boolean = false;
 }
 
-declare interface IEventhub {
+interface SubscribeOptions {
+  topic: string;
+  sinceEventId?: string;
 }
+
+declare interface IEventhub {}
+
+type MittEvents = {
+  [LifecycleEvents.CONNECT]: void;
+  [LifecycleEvents.OFFLINE]: ErrorEvent | CloseEvent;
+  [LifecycleEvents.RECONNECT]: void;
+  [LifecycleEvents.DISCONNECT]: void;
+};
 
 class Eventhub implements IEventhub {
   private _wsUrl: string;
@@ -75,29 +86,22 @@ class Eventhub implements IEventhub {
   private _isConnected: boolean;
 
   private _rpcResponseCounter: number;
-  private _rpcCallbackList: Array<[number, RPCCallback]>;
-  private _subscriptionCallbackList: Array<Subscription>;
+  private _rpcCallbackList: Map<number, RPCCallback> = new Map();
+  private _subscriptionCallbackList: Subscription[];
 
-  private _sentPingsList: Array<PingRequest>;
-  private _pingTimer : any;
-  private _pingTimeOutTimer : any;
-  private _emitter : Emitter<{
-        [LifecycleEvents.CONNECT]: void;
-        [LifecycleEvents.OFFLINE]: Error;
-        [LifecycleEvents.RECONNECT]: void;
-        [LifecycleEvents.DISCONNECT]: void
-    }>;
+  private _sentPingsList: PingRequest[] = [];
+  private _pingTimer: any;
+  private _pingTimeOutTimer: any;
+  private _emitter: Emitter<MittEvents>;
 
   /**
    * Constructor (new Eventhub).
    * @param url Eventhub websocket url.
    * @param token Authentication token.
    */
-  constructor (url: string, token?: string, opts?: Object) {
+  constructor(url: string, token?: string, opts?: Object) {
     this._rpcResponseCounter = 0;
-    this._rpcCallbackList = [];
     this._subscriptionCallbackList = [];
-    this._sentPingsList = [];
     this._wsUrl = `${url}/?auth=${token}`;
     this._socket = undefined;
     this._isConnected = false;
@@ -111,60 +115,61 @@ class Eventhub implements IEventhub {
    * Connect to eventhub.
    * @returns Promise with true on success or error string on fail.
    */
-  public connect() : Promise<any> {
-    return new Promise(
-      (resolve, reject) => {
-        this._socket = new WebSocket(this._wsUrl);
-        this._socket.onmessage = this._parseRPCResponse.bind(this);
+  public connect(): Promise<true> {
+    return new Promise((resolve, reject) => {
+      this._socket = new WebSocket(this._wsUrl);
+      this._socket.onmessage = this._parseRPCResponse.bind(this);
 
-        this._socket.onopen = function() {
-          this._emit(LifecycleEvents.CONNECT);
+      this._socket.onopen = () => {
+        this._emitter.emit(LifecycleEvents.CONNECT);
 
-          this._isConnected = true;
+        this._isConnected = true;
 
-          if (!this._opts.disablePingCheck) {
-            this._startPingMonitor();
-          }
+        if (!this._opts.disablePingCheck) {
+          this._startPingMonitor();
+        }
 
-          resolve(true);
-        }.bind(this);
+        resolve(true);
+      };
 
-        this._socket.onerror = function(err: Error) {
-          this._emit(LifecycleEvents.OFFLINE, err);
+      this._socket.onerror = (err: ErrorEvent) => {
+        this._emitter.emit(LifecycleEvents.OFFLINE, err);
 
-          if (this._isConnected) {
-            console.log("Eventhub WebSocket connection error:", err);
-            this._isConnected = false;
+        if (this._isConnected) {
+          console.warn('Eventhub WebSocket connection error:', err);
+          this._isConnected = false;
 
-            this._reconnect();
-          } else {
-            reject(err);
-          }
-        }.bind(this);
+          this._reconnect();
+        } else {
+          reject(err);
+        }
+      };
 
-        this._socket.onclose = function(err: Error) {
-          if (this._isConnected) {
-            this._emit(LifecycleEvents.OFFLINE, err);
+      this._socket.onclose = (err: CloseEvent) => {
+        if (this._isConnected) {
+          this._emitter.emit(LifecycleEvents.OFFLINE, err);
 
-            this._isConnected = false;
-            this._reconnect();
-          }
-        }.bind(this);
+          this._isConnected = false;
+          this._reconnect();
+        }
+      };
     });
   }
 
   /*
    * Try to reconnect in a loop until we succeed.
-  */
-  private _reconnect() : void {
+   */
+  private _reconnect(): void {
     if (this._isConnected) return;
 
-    this._emit(LifecycleEvents.RECONNECT)
+    this._emitter.emit(LifecycleEvents.RECONNECT);
 
-    const reconnectInterval = this._opts.reconnectInterval;
+    const { reconnectInterval } = this._opts;
 
-    if (this._socket.readyState != WebSocket.CLOSED &&
-        this._socket.readyState != WebSocket.CLOSING) {
+    if (
+      this._socket.readyState != WebSocket.CLOSED &&
+      this._socket.readyState != WebSocket.CLOSING
+    ) {
       this._socket.close();
     }
 
@@ -174,66 +179,66 @@ class Eventhub implements IEventhub {
       this._sentPingsList = [];
     }
 
-    this.connect().then(res => {
-      let subscriptions = this._subscriptionCallbackList.slice();
-      this._rpcResponseCounter = 0;
-      this._rpcCallbackList = [];
-      this._subscriptionCallbackList = [];
+    this.connect()
+      .then((_res) => {
+        this._rpcResponseCounter = 0;
+        this._rpcCallbackList = new Map();
+        this._subscriptionCallbackList = [];
 
-      for (let sub of subscriptions) {
-        this.subscribe(sub.topic, sub.callback, { sinceEventId: sub.lastRecvMessageId });
-      }
-    }).catch(err => {
-      setTimeout(this._reconnect.bind(this), reconnectInterval);
-    });
+        for (const sub of this._subscriptionCallbackList.slice()) {
+          this.subscribe(sub.topic, sub.callback, {
+            sinceEventId: sub.lastRecvMessageId,
+          });
+        }
+      })
+      .catch((_err) => {
+        setTimeout(this._reconnect.bind(this), reconnectInterval);
+      });
   }
 
   /*
-  * Send pings to the server on the configured interval.
-  * Mark the client as disconnected if <_opts.maxFailedPings> pings fail.
-  * Also trigger the reconnect procedure.
-  */
-  private _startPingMonitor()  : void {
-    const pingInterval = this._opts.pingInterval;
-    const maxFailedPings = this._opts.maxFailedPings;
+   * Send pings to the server on the configured interval.
+   * Mark the client as disconnected if <_opts.maxFailedPings> pings fail.
+   * Also trigger the reconnect procedure.
+   */
+  private _startPingMonitor(): void {
+    const { pingInterval, maxFailedPings } = this._opts;
 
     // Ping server each <pingInterval> second.
-    this._pingTimer = setInterval(function() {
+    this._pingTimer = setInterval(() => {
       if (!this._isConnected) {
         return;
       }
 
-      const pingReq : PingRequest = {
+      const pingReq: PingRequest = {
         timestamp: Date.now(),
-        rpcRequestId: this._rpcResponseCounter + 1
+        rpcRequestId: this._rpcResponseCounter + 1,
       };
 
       this._sentPingsList.push(pingReq);
-      this._sendRPCRequest(RPCMethods.PING, []).then(pong => {
+      this._sendRPCRequest(RPCMethods.PING, []).then((pong) => {
         for (let i = 0; i < this._sentPingsList.length; i++) {
           if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
             this._sentPingsList.splice(i, 1);
+            break;
           }
         }
       });
-    }.bind(this), pingInterval);
+    }, pingInterval);
 
     // Check that our pings is successfully ponged by the server.
     // disconnect and reconnect if maxFailedPings is reached.
-    this._pingTimeOutTimer = setInterval(function() {
+    this._pingTimeOutTimer = setInterval(() => {
       const now = Date.now();
-      let failedPingCount = 0;
-      for (let i = 0; i < this._sentPingsList.length; i++) {
-        if (now > (this._sentPingsList[i].timestamp + this._opts.pingTimeout)) {
-          failedPingCount++;
-        }
-      }
+      let failedPingCount = this._sentPingsList.filter(
+        (ping: PingRequest) => now > ping.timestamp + this._opts.pingTimeout
+      ).length;
 
       if (failedPingCount >= maxFailedPings) {
         this._isConnected = false;
         this._reconnect();
       }
-    }.bind(this), pingInterval);
+    }, pingInterval);
   }
 
   /**
@@ -242,33 +247,34 @@ class Eventhub implements IEventhub {
    * @param params What parameters to include with the call.
    * @return Promise with response or error.
    */
-  private _sendRPCRequest(method: RPCMethods, params: any) : Promise<any> {
-    this._rpcResponseCounter++;
-
+  private _sendRPCRequest(method: RPCMethods, params: any): Promise<any> {
     const requestObject = {
-      id: this._rpcResponseCounter,
-      jsonrpc: "2.0",
-      method: method,
-      params: params,
-    }
+      id: ++this._rpcResponseCounter,
+      jsonrpc: '2.0',
+      method,
+      params,
+    };
 
     return new Promise((resolve, reject) => {
       if (this._socket.readyState != WebSocket.OPEN) {
-        reject(new Error("WebSocket is not connected."));
+        reject(new Error('WebSocket is not connected.'));
         return;
       }
 
-      this._rpcCallbackList.push([this._rpcResponseCounter, function (err: string, resp: string) {
-        if (err != null) {
-          reject(err);
-        } else {
-          resolve(resp);
-        }
-      }.bind(this)]);
+      this._rpcCallbackList.set(
+        requestObject.id,
+        function (err: string, resp: string) {
+          if (err != null) {
+            reject(err);
+          } else {
+            resolve(resp);
+          }
+        }.bind(this)
+      );
 
       try {
         this._socket.send(JSON.stringify(requestObject));
-      } catch(err) {
+      } catch (err) {
         reject(err);
       }
     });
@@ -278,56 +284,57 @@ class Eventhub implements IEventhub {
    * Parse incoming websocket response and call correct handlers.
    * @param response Response string.
    */
-  private _parseRPCResponse(response: Object) : void {
+  private _parseRPCResponse(response: MessageEvent): void {
     try {
-      const responseObj : Object = JSON.parse(response['data']);
+      const responseObj: Partial<{
+        id: any;
+        error: any;
+        result: Partial<{
+          id: string;
+          topic: string;
+          message: any;
+        }>;
+      }> = JSON.parse(response.data.toString());
 
-      if(!responseObj.hasOwnProperty('id') || responseObj['id'] == 'null') {
+      if (!responseObj.hasOwnProperty('id') || responseObj.id == 'null') {
         return;
       }
 
       // If this is a message event then check if we are
       // subscribed and call the corrrect callback.
-      if (responseObj.hasOwnProperty('result') && responseObj['result'].hasOwnProperty('message') && responseObj['result'].hasOwnProperty('topic')) {
-        for (let subscription of this._subscriptionCallbackList) {
-          if (subscription.rpcRequestId == responseObj['id']) {
-            subscription.lastRecvMessageId = responseObj['result']['id'];
-            subscription.callback(responseObj['result']);
+      if (
+        responseObj.hasOwnProperty('result') &&
+        responseObj.result.hasOwnProperty('message') &&
+        responseObj.result.hasOwnProperty('topic')
+      ) {
+        for (const subscription of this._subscriptionCallbackList) {
+          if (subscription.rpcRequestId == responseObj.id) {
+            subscription.lastRecvMessageId = responseObj.result.id;
+            subscription.callback(responseObj.result);
             return;
           }
         }
       }
 
       // This is not a message event, see if we have a callback for it.
-      let rpcCallback = undefined;
-      for (let callback of  this._rpcCallbackList) {
-        if (callback[0] == responseObj['id']) {
-          rpcCallback = callback[1];
-          break;
-        }
-      }
+      let rpcCallback = this._rpcCallbackList.get(responseObj.id);
 
       // We have no callback for the response, do nothing.
-      if (rpcCallback === undefined) {
+      if (!rpcCallback) {
         return;
       }
 
       // We have a callback for the response, call it.
       if (responseObj.hasOwnProperty('error')) {
-        rpcCallback(responseObj['error'], null);
+        rpcCallback(responseObj.error, null);
       } else if (responseObj.hasOwnProperty('result')) {
-        rpcCallback(null, responseObj['result']);
+        rpcCallback(null, responseObj.result);
       }
 
       // Remove the callback once it has been called.
-      for (let i = 0; i < this._rpcCallbackList.length; i++) {
-        if (this._rpcCallbackList[i][0] == responseObj['id']) {
-          this._rpcCallbackList.splice(i, 1);
-        }
-      }
+      this._rpcCallbackList.delete(responseObj.id);
     } catch (err) {
-      console.log("Failed to parse websocket response:", err);
-      return;
+      console.warn('Failed to parse websocket response:', err);
     }
   }
 
@@ -349,32 +356,32 @@ class Eventhub implements IEventhub {
    * @param opts Options to send with the request.
    * @returns Promise with success or callback.
    */
-  public subscribe(topic: string, callback: SubscriptionCallback, opts?: Object) : Promise<any> {
-    let subscribeRequest : Object = {
-      "topic": topic
-    };
-
-    if (topic == "") {
-      return new Promise((_, reject) => {
-        reject(new Error("Topic cannot be empty."))
-      });
+  public async subscribe(
+    topic: string,
+    callback: SubscriptionCallback,
+    opts?: Omit<SubscribeOptions, 'topic'>
+  ): Promise<any> {
+    if (!topic) {
+      throw new Error('Topic cannot be empty.');
     }
 
-    if (typeof(opts) !== 'undefined') {
-      subscribeRequest = Object.assign(subscribeRequest, opts);
+    let subscribeRequest: SubscribeOptions = {
+      topic,
+    };
+
+    if (opts) {
+      Object.assign(subscribeRequest, opts);
     }
 
     // First check if we are already subscribed to the topic.
     if (this.isSubscribed(topic)) {
-      return new Promise((_, reject) => {
-        reject(new Error(`Already subscribed to ${topic}`));
-      });
+      throw new Error(`Already subscribed to ${topic}`);
     }
 
     this._subscriptionCallbackList.push({
-      topic: topic,
-      rpcRequestId: (this._rpcResponseCounter+1),
-      callback: callback
+      topic,
+      rpcRequestId: this._rpcResponseCounter + 1,
+      callback,
     });
 
     return this._sendRPCRequest(RPCMethods.SUBSCRIBE, subscribeRequest);
@@ -384,33 +391,21 @@ class Eventhub implements IEventhub {
    * Unsubscribe to one or more topic patterns.
    * @param topics Array of topics or single topic to unsubscribe from.
    */
-  public unsubscribe(topics: Array<string>|string) : void {
-    let topicList: Array<string> = [];
-
-    if (typeof(topics) == 'string') {
-      topicList.push(topics);
-    } else {
-      topicList = topics;
-    }
-
+  public unsubscribe(topics: string[] | string): void {
+    const topicList: string[] = Array.isArray(topics) ? topics : [topics];
     if (topicList.length > 0) {
-      for (let topic of topicList) {
-        for (let i = 0; i < this._subscriptionCallbackList.length; i++) {
-          if (topic == this._subscriptionCallbackList[i].topic) {
-            this._subscriptionCallbackList.splice(i, 1);
-          }
-        }
-      }
+      this._subscriptionCallbackList = this._subscriptionCallbackList.filter(
+        (cb) => !topicList.includes(cb.topic)
+      );
 
       this._sendRPCRequest(RPCMethods.UNSUBSCRIBE, topicList);
     }
   }
 
   /**
-  * Unsubscribe from all topics.
-
-  */
-  public unsubscribeAll() : void {
+   * Unsubscribe from all topics.
+   */
+  public unsubscribeAll(): void {
     this._subscriptionCallbackList = [];
     this._sendRPCRequest(RPCMethods.UNSUBSCRIBE_ALL, []);
   }
@@ -421,14 +416,14 @@ class Eventhub implements IEventhub {
    * @param message Message to publish.
    * @param opts Options to send with the request.
    */
-  public publish(topic: string, message: string, opts?: Object) : Promise<any> {
-    let publishRequest = {
-      topic: topic,
-      message: message
-    }
+  public publish(topic: string, message: string, opts?: Object): Promise<any> {
+    const publishRequest = {
+      topic,
+      message,
+    };
 
-    if (typeof(opts) !== 'undefined') {
-      publishRequest = Object.assign(publishRequest, opts);
+    if (opts) {
+      Object.assign(publishRequest, opts);
     }
 
     return this._sendRPCRequest(RPCMethods.PUBLISH, publishRequest);
@@ -438,7 +433,7 @@ class Eventhub implements IEventhub {
    * List all current subscriptions.
    * @return Array containing current subscribed topics.
    */
-  public listSubscriptions() : Promise<any> {
+  public listSubscriptions(): Promise<any> {
     return this._sendRPCRequest(RPCMethods.LIST, []);
   }
 
@@ -446,7 +441,7 @@ class Eventhub implements IEventhub {
    * Get key from key/value store.
    * @param key Key to fetch.
    */
-  public get(key: string) : Promise<any> {
+  public get(key: string): Promise<any> {
     return this._sendRPCRequest(RPCMethods.GET, { key: key });
   }
 
@@ -454,14 +449,14 @@ class Eventhub implements IEventhub {
    * Set key in key/value store.
    * @param key Key to set.
    */
-  public set(key: string, value: string, ttl?: number) : Promise<any> {
-    let setRequest = {
-      key: key,
-      value: value
-    }
+  public set(key: string, value: string, ttl?: number): Promise<any> {
+    const setRequest: Record<string, any> = {
+      key,
+      value,
+    };
 
-    if (typeof(ttl) !== 'undefined' && ttl > 0) {
-      setRequest['ttl'] = ttl;
+    if (ttl > 0) {
+      setRequest.ttl = ttl;
     }
 
     return this._sendRPCRequest(RPCMethods.SET, setRequest);
@@ -471,45 +466,43 @@ class Eventhub implements IEventhub {
    * Delete key from key/value store.
    * @param key Key to delete.
    */
-  public del(key: string) : Promise<any> {
-    return this._sendRPCRequest(RPCMethods.DEL, { key: key });
+  public del(key: string): Promise<any> {
+    return this._sendRPCRequest(RPCMethods.DEL, { key });
   }
 
   /**
    * Close connection to Eventhub
    */
-  public disconnect() : Promise<any> {
+  public disconnect(): Promise<any> {
     this._isConnected = false;
 
     const response = this._sendRPCRequest(RPCMethods.DISCONNECT, []);
 
-    this._emit(LifecycleEvents.DISCONNECT);
+    this._emitter.emit(LifecycleEvents.DISCONNECT);
 
     return response;
   }
 
   /**
-   * Emit event
-   */
-  private _emit(event: LifecycleEvents, data?: any): this {
-      this._emitter.emit(event, data);
-      return this;
-  }
-
-  /**
    * Add event handler
    */
-  public on(event: LifecycleEvents, listener: Handler): this {
-      this._emitter.on(event, listener);
-      return this;
+  public on<Key extends keyof MittEvents>(
+    type: Key,
+    handler: Handler<MittEvents[Key]>
+  ): this {
+    this._emitter.on(type, handler);
+    return this;
   }
 
   /**
    * Remove event handler
    */
-  public off(event: LifecycleEvents, listener: Handler): this {
-      this._emitter.off(event, listener);
-      return this;
+  public off<Key extends keyof MittEvents>(
+    type: Key,
+    handler?: Handler<MittEvents[Key]>
+  ): this {
+    this._emitter.off(type, handler);
+    return this;
   }
 }
 
