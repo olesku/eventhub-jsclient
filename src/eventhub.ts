@@ -82,12 +82,12 @@ type MittEvents = {
 class Eventhub implements IEventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
-  private _opts: ConnectionOptions;
-  private _isConnected: boolean;
+  private _opts: ConnectionOptions = new ConnectionOptions();
+  private _isConnected: boolean = false;
 
-  private _rpcResponseCounter: number;
+  private _rpcResponseCounter: number = 0;
   private _rpcCallbackList: Map<number, RPCCallback> = new Map();
-  private _subscriptionCallbackList: Subscription[];
+  private _subscriptionCallbackList: Subscription[] = [];
 
   private _sentPingsList: PingRequest[] = [];
   private _pingTimer: any;
@@ -100,11 +100,7 @@ class Eventhub implements IEventhub {
    * @param token Authentication token.
    */
   constructor(url: string, token?: string, opts?: Object) {
-    this._rpcResponseCounter = 0;
-    this._subscriptionCallbackList = [];
     this._wsUrl = `${url}/?auth=${token}`;
-    this._socket = undefined;
-    this._isConnected = false;
     this._opts = new ConnectionOptions();
     this._emitter = mitt(); // event emitter
 

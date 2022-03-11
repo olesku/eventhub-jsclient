@@ -9,10 +9,9 @@
   "unpkg": "dist/eventhub.umd.js",
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
-    "build-node": "microbundle --name Eventhub --target node --format cjs,es --external events,isomorphic-ws",
-    "build-module": "microbundle --name Eventhub --target node --compress --format es",
-    "build-web": "microbundle --name Eventhub --target web --format umd --external none",
-    "build": "npm run build-node && npm run build-module && npm run build-web",
+    "build-node": "microbundle --name Eventhub --target node --format cjs,es",
+    "build-web": "microbundle --name Eventhub --target web --compress --format umd,modern --external none",
+    "build": "npm run build-node && npm run build-web",
     "test": "jest --forceExit",
     "test-dev": "jest --watch --verbose false",
     "dev": "microbundle watch --name Eventhub"
@@ -42,7 +41,7 @@
     "regex": "^_"
   },
   "browserslist": [
-    "cover 90% in NO",
+    ">1%",
     "not dead"
   ]
 }
