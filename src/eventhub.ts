@@ -259,13 +259,13 @@ class Eventhub implements IEventhub {
 
       this._rpcCallbackList.set(
         requestObject.id,
-        function (err: string, resp: string) {
+        (err: string, resp: string) => {
           if (err != null) {
             reject(err);
           } else {
             resolve(resp);
           }
-        }.bind(this)
+        }
       );
 
       try {
