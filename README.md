@@ -19,8 +19,10 @@ $ wget -a scripts/eventhub-jsclient.js https://unpkg.com/eventhub-jsclient/dist/
 Or as a module directly from unpkg:
 
 ```html
+<script src="https://unpkg.com/eventhub-jsclient/dist/eventhub.umd.js" defer></script>
+<!-- or -->
 <script type="module">
-    import Eventhub from 'https://unpkg.com/eventhub-jsclient/dist/eventhub.mjs?module';
+    import Eventhub from 'https://unpkg.com/eventhub-jsclient/dist/eventhub.modern.js?module';
     const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 </script>
 ```
