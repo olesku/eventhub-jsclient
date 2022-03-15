@@ -177,11 +177,12 @@ class Eventhub implements IEventhub {
 
     this.connect()
       .then((_res) => {
+        const oldSubscriptions = this._subscriptionCallbackList.slice();
         this._rpcResponseCounter = 0;
         this._rpcCallbackList = new Map();
         this._subscriptionCallbackList = [];
 
-        for (const sub of this._subscriptionCallbackList.slice()) {
+        for (const sub of oldSubscriptions) {
           this.subscribe(sub.topic, sub.callback, {
             sinceEventId: sub.lastRecvMessageId,
           });
@@ -339,10 +340,7 @@ class Eventhub implements IEventhub {
    * @param topic Topic.
    */
   public isSubscribed(topic: string) {
-    for (const subscribedTopic of this._subscriptionCallbackList) {
-      if (subscribedTopic.topic == topic) return true;
-    }
-    return false;
+    return this._subscriptionCallbackList.some((sub) => sub.topic == topic);
   }
 
   /**
