@@ -70,6 +70,19 @@ interface SubscribeOptions {
   sinceEventId?: string;
 }
 
+interface MessageResult {
+    id: string;
+    topic: string;
+    message: any;
+    origin: string;
+}
+
+interface SubscribeResult {
+    action: 'subscribe';
+    status: string;
+    topic: string;
+}
+
 declare interface IEventhub {}
 
 type MittEvents = {
@@ -98,8 +111,9 @@ class Eventhub implements IEventhub {
    * Constructor (new Eventhub).
    * @param url Eventhub websocket url.
    * @param token Authentication token.
+   * @param opts Options.
    */
-  constructor(url: string, token?: string, opts?: Object) {
+  constructor(url: string, token?: string, opts?: { [P in keyof ConnectionOptions]?: ConnectionOptions[P] }) {
     this._wsUrl = `${url}/?auth=${token}`;
     this._opts = new ConnectionOptions();
     this._emitter = mitt(); // event emitter
@@ -213,7 +227,7 @@ class Eventhub implements IEventhub {
       };
 
       this._sentPingsList.push(pingReq);
-      this._sendRPCRequest(RPCMethods.PING, []).then((pong) => {
+      this._sendRPCRequest<{ pong: number }>(RPCMethods.PING, []).then((_pong) => {
         for (let i = 0; i < this._sentPingsList.length; i++) {
           if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
             this._sentPingsList.splice(i, 1);
@@ -244,7 +258,7 @@ class Eventhub implements IEventhub {
    * @param params What parameters to include with the call.
    * @return Promise with response or error.
    */
-  private _sendRPCRequest(method: RPCMethods, params: any): Promise<any> {
+  private _sendRPCRequest<T = any>(method: RPCMethods, params: any): Promise<T> {
     const requestObject = {
       id: ++this._rpcResponseCounter,
       jsonrpc: '2.0',
@@ -260,7 +274,7 @@ class Eventhub implements IEventhub {
 
       this._rpcCallbackList.set(
         requestObject.id,
-        (err: string, resp: string) => {
+        (err: string, resp: T) => {
           if (err != null) {
             reject(err);
           } else {
@@ -286,11 +300,7 @@ class Eventhub implements IEventhub {
       const responseObj: Partial<{
         id: any;
         error: any;
-        result: Partial<{
-          id: string;
-          topic: string;
-          message: any;
-        }>;
+        result: MessageResult | any;
       }> = JSON.parse(response.data.toString());
 
       if (!responseObj.hasOwnProperty('id') || responseObj.id == 'null') {
@@ -307,7 +317,7 @@ class Eventhub implements IEventhub {
         for (const subscription of this._subscriptionCallbackList) {
           if (subscription.rpcRequestId == responseObj.id) {
             subscription.lastRecvMessageId = responseObj.result.id;
-            subscription.callback(responseObj.result);
+            subscription.callback(responseObj.result as MessageResult);
             return;
           }
         }
@@ -354,7 +364,7 @@ class Eventhub implements IEventhub {
     topic: string,
     callback: SubscriptionCallback,
     opts?: Omit<SubscribeOptions, 'topic'>
-  ): Promise<any> {
+  ): Promise<SubscribeResult> {
     if (!topic) {
       throw new Error('Topic cannot be empty.');
     }
@@ -378,7 +388,7 @@ class Eventhub implements IEventhub {
       callback,
     });
 
-    return this._sendRPCRequest(RPCMethods.SUBSCRIBE, subscribeRequest);
+    return this._sendRPCRequest<SubscribeResult>(RPCMethods.SUBSCRIBE, subscribeRequest);
   }
 
   /**
@@ -427,8 +437,8 @@ class Eventhub implements IEventhub {
    * List all current subscriptions.
    * @return Array containing current subscribed topics.
    */
-  public listSubscriptions(): Promise<any> {
-    return this._sendRPCRequest(RPCMethods.LIST, []);
+  public listSubscriptions(): Promise<string[]> {
+    return this._sendRPCRequest<string[]>(RPCMethods.LIST, []);
   }
 
   /**
@@ -467,7 +477,7 @@ class Eventhub implements IEventhub {
   /**
    * Close connection to Eventhub
    */
-  public disconnect(): Promise<any> {
+  public disconnect(): Promise<void> {
     this._isConnected = false;
 
     const response = this._sendRPCRequest(RPCMethods.DISCONNECT, []);
