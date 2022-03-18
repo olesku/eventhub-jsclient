@@ -13,7 +13,18 @@ $ npm i --save eventhub-jsclient
 Or, if you're oldschool:
 
 ```bash
-$ wget -a scripts/eventhub-jsclient.js https://github.com/olesku/eventhub-jsclient/blob/master/dist/eventhub.umd.js
+$ wget -a scripts/eventhub-jsclient.js https://unpkg.com/eventhub-jsclient/dist/eventhub.umd.js
+```
+
+Or as a module directly from unpkg:
+
+```html
+<script src="https://unpkg.com/eventhub-jsclient/dist/eventhub.umd.js" defer></script>
+<!-- or -->
+<script type="module">
+    import Eventhub from 'https://unpkg.com/eventhub-jsclient/dist/eventhub.modern.js?module';
+    const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
+</script>
 ```
 
 ## Examples
