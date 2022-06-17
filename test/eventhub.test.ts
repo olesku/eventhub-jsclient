@@ -16,7 +16,7 @@ const closeServer = (server: Server, cb: (err?: Error) => void) => {
 let emitEventSpy: jest.SpyInstance,
   testServer: Server,
   eventhub: Eventhub,
-  wsResponseResolve: Function,
+  resolveOutputMessage: Function,
   subscribeCallbackResolve: Function,
   wsClient = undefined;
 
@@ -38,9 +38,16 @@ beforeEach(async () => {
     });
 
     ws.on('message', (msg) => {
-      if (wsResponseResolve != undefined) {
-        wsResponseResolve(JSON.parse(msg.toString()));
-        wsResponseResolve = undefined;
+      if (resolveOutputMessage != undefined) {
+        const parsedMessage = JSON.parse(msg.toString());
+
+        if (parsedMessage.method === 'disconnect') {
+          ws.close();
+        }
+
+        resolveOutputMessage(parsedMessage);
+
+        resolveOutputMessage = undefined;
       }
     });
   });
@@ -60,9 +67,9 @@ afterEach((done) => {
 });
 
 // Wait for a websocket response.
-function waitForWSResponse(): Promise<any> {
+function waitForOutputMessage(): Promise<any> {
   return new Promise<any>((resolve, reject) => {
-    wsResponseResolve = resolve;
+    resolveOutputMessage = resolve;
   });
 }
 
@@ -92,7 +99,7 @@ test('Test that subscribe() sends correct RPC request to server', async () => {
     })
   ).resolves.toBeCalled();
 
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 1,
@@ -107,9 +114,12 @@ test('Test that subscribe() sends correct RPC request to server', async () => {
 test('Test that disconnect() sends correct RPC request', async () => {
   expect.assertions(2);
 
-  eventhub.disconnect();
+  const disconnectPromise = eventhub.disconnect();
 
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
+  await disconnectPromise;
+
+  expect(emitEventSpy).toHaveBeenCalledWith('disconnect');
 
   expect(resp).toEqual({
     id: 1,
@@ -117,6 +127,31 @@ test('Test that disconnect() sends correct RPC request', async () => {
     method: 'disconnect',
     params: [],
   });
+});
+
+test('Test that disconnect() prevents automatic reconnect', async () => {
+  expect.assertions(5);
+
+  expect(testServer.clients.size).toBe(1);
+
+  await eventhub.disconnect();
+
+  expect(emitEventSpy).toHaveBeenCalledWith('disconnect');
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  expect(emitEventSpy).not.toHaveBeenCalledWith('offline', expect.anything());
+  expect(emitEventSpy).not.toHaveBeenCalledWith('reconnect');
+
+  expect(testServer.clients.size).toBe(0);
+});
+
+test('Test that disconnect() resolves despite connection being closed', async () => {
+  expect.assertions(1);
+
+  await new Promise(resolve => closeServer(testServer, resolve));
+
+  await eventhub.disconnect().catch((err) => fail(err));
 
   expect(emitEventSpy).toHaveBeenCalledWith('disconnect');
 });
@@ -151,7 +186,7 @@ test('Test that publish() sends correct RPC request', async () => {
   expect.assertions(1);
 
   eventhub.publish('testTopic', 'Test message');
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 1,
@@ -171,11 +206,11 @@ test('Test that unsubscribe() sends correct RPC request', async () => {
     subscribeCallbackResolve(true);
   });
 
-  await waitForWSResponse();
+  await waitForOutputMessage();
 
   eventhub.unsubscribe('testTopic');
 
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 2,
@@ -192,11 +227,11 @@ test('Test that isSubscribe is false after unsubscribe', async () => {
     subscribeCallbackResolve(true);
   });
 
-  await waitForWSResponse();
+  await waitForOutputMessage();
 
   eventhub.unsubscribe('testTopic');
 
-  await waitForWSResponse();
+  await waitForOutputMessage();
 
   expect(eventhub.isSubscribed('testTopic')).toEqual(false);
 });
@@ -208,11 +243,11 @@ test('Test that unsubscribeAll() sends correct RPC request', async () => {
     subscribeCallbackResolve(true);
   });
 
-  await waitForWSResponse();
+  await waitForOutputMessage();
 
   eventhub.unsubscribeAll();
 
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 2,
@@ -248,7 +283,7 @@ test('Test that get() sends correct RPC request', async () => {
   expect.assertions(1);
 
   eventhub.get('foo');
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 1,
@@ -264,7 +299,7 @@ test('Test that set() without ttl sends correct RPC request', async () => {
   expect.assertions(1);
 
   eventhub.set('foo', 'bar');
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 1,
@@ -281,7 +316,7 @@ test('Test that set() with ttl sends correct RPC request', async () => {
   expect.assertions(1);
 
   eventhub.set('foo', 'bar', 60);
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 1,
@@ -299,7 +334,7 @@ test('Test that del() sends correct RPC request', async () => {
   expect.assertions(1);
 
   eventhub.del('foo');
-  const resp = await waitForWSResponse();
+  const resp = await waitForOutputMessage();
 
   expect(resp).toEqual({
     id: 1,
