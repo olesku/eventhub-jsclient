@@ -488,7 +488,7 @@ class Eventhub implements IEventhub {
    public async disconnect(): Promise<void> {
     this._manuallyDisconnected = true;
 
-    if (this._isConnected) {
+    if (this._isConnected || this._socket.readyState === WebSocket.CONNECTING) {
       this._isConnected = false;
 
       await new Promise(resolve => {
