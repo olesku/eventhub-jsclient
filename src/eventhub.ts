@@ -97,6 +97,7 @@ class Eventhub implements IEventhub {
   private _socket: WebSocket;
   private _opts: ConnectionOptions = new ConnectionOptions();
   private _isConnected: boolean = false;
+  private _manuallyDisconnected: boolean = false;
 
   private _rpcResponseCounter: number = 0;
   private _rpcCallbackList: Map<number, RPCCallback> = new Map();
@@ -126,6 +127,8 @@ class Eventhub implements IEventhub {
    * @returns Promise with true on success or error string on fail.
    */
   public connect(): Promise<true> {
+    this._manuallyDisconnected = false;
+
     return new Promise((resolve, reject) => {
       this._socket = new WebSocket(this._wsUrl);
       this._socket.onmessage = this._parseRPCResponse.bind(this);
@@ -170,7 +173,7 @@ class Eventhub implements IEventhub {
    * Try to reconnect in a loop until we succeed.
    */
   private _reconnect(): void {
-    if (this._isConnected) return;
+    if (this._isConnected || this._manuallyDisconnected) return;
 
     this._emitter.emit(LifecycleEvents.RECONNECT);
 
@@ -183,11 +186,7 @@ class Eventhub implements IEventhub {
       this._socket.close();
     }
 
-    if (!this._opts.disablePingCheck) {
-      clearInterval(this._pingTimer);
-      clearInterval(this._pingTimeOutTimer);
-      this._sentPingsList = [];
-    }
+    this._resetPingMonitor();
 
     this.connect()
       .then((_res) => {
@@ -250,6 +249,15 @@ class Eventhub implements IEventhub {
         this._reconnect();
       }
     }, pingInterval);
+  }
+
+  private _resetPingMonitor(): void {
+    if (!this._opts.disablePingCheck) {
+      clearInterval(this._pingTimer);
+      clearInterval(this._pingTimeOutTimer);
+
+      this._sentPingsList = [];
+    }
   }
 
   /**
@@ -477,14 +485,48 @@ class Eventhub implements IEventhub {
   /**
    * Close connection to Eventhub
    */
-  public disconnect(): Promise<void> {
-    this._isConnected = false;
+   public async disconnect(): Promise<void> {
+    this._manuallyDisconnected = true;
 
-    const response = this._sendRPCRequest(RPCMethods.DISCONNECT, []);
+    if (this._isConnected || this._socket.readyState === WebSocket.CONNECTING) {
+      this._isConnected = false;
+
+      await new Promise(resolve => {
+        const forceCloseTimeoutId = setTimeout(() => {
+          if (
+            this._socket.readyState != WebSocket.CLOSED &&
+            this._socket.readyState != WebSocket.CLOSING
+          ) {
+            this._socket.close();
+          }
+        }, 1000);
+
+        this._socket.onclose = () => {
+          clearTimeout(forceCloseTimeoutId);
+          resolve(true);
+        };
+
+        this._socket.onerror = () => {
+          clearTimeout(forceCloseTimeoutId);
+          resolve(true);
+        };
+
+        this._sendRPCRequest(RPCMethods.DISCONNECT, []).catch(() => {});
+      });
+    }
+
+    this._socket.onopen = null;
+    this._socket.onmessage = null;
+    this._socket.onclose = null;
+    this._socket.onerror = null;
+
+    this._rpcResponseCounter = 0;
+    this._rpcCallbackList = new Map();
+    this._subscriptionCallbackList = [];
+
+    this._resetPingMonitor();
 
     this._emitter.emit(LifecycleEvents.DISCONNECT);
-
-    return response;
   }
 
   /**
