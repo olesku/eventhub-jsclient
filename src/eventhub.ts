@@ -515,6 +515,11 @@ class Eventhub implements IEventhub {
       });
     }
 
+    this._socket.onopen = null;
+    this._socket.onmessage = null;
+    this._socket.onclose = null;
+    this._socket.onerror = null;
+
     this._rpcResponseCounter = 0;
     this._rpcCallbackList = new Map();
     this._subscriptionCallbackList = [];
