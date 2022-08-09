@@ -68,6 +68,7 @@ class ConnectionOptions {
 interface SubscribeOptions {
   topic: string;
   sinceEventId?: string;
+  since?: number;
 }
 
 interface MessageResult {
