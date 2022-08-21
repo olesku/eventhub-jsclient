@@ -91,6 +91,7 @@ interface HistoryResult {
   action: 'history';
   status: string;
   topic: string;
+  result: Array<MessageResult>
 }
 
 declare interface IEventhub {}
@@ -468,7 +469,7 @@ class Eventhub implements IEventhub {
   public async getHistory(
     topic: string,
     opts: Omit<HistoryOptions, 'topic'>
-  ): Promise<SubscribeResult> {
+  ): Promise<HistoryResult> {
     if (!topic) {
       throw new Error('Topic cannot be empty.');
     }
@@ -489,7 +490,7 @@ class Eventhub implements IEventhub {
       Object.assign(historyRequest, opts);
     }
 
-    return this._sendRPCRequest<SubscribeResult>(RPCMethods.HISTORY, historyRequest);
+    return this._sendRPCRequest<HistoryResult>(RPCMethods.HISTORY, historyRequest);
   }
 
   /**
