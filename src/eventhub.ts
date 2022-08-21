@@ -71,6 +71,9 @@ interface SubscribeOptions {
   since?: number;
 }
 
+interface HistoryOptions extends SubscribeOptions {
+}
+
 interface MessageResult {
     id: string;
     topic: string;
@@ -82,6 +85,12 @@ interface SubscribeResult {
     action: 'subscribe';
     status: string;
     topic: string;
+}
+
+interface HistoryResult {
+  action: 'history';
+  status: string;
+  topic: string;
 }
 
 declare interface IEventhub {}
@@ -448,6 +457,39 @@ class Eventhub implements IEventhub {
    */
   public listSubscriptions(): Promise<string[]> {
     return this._sendRPCRequest<string[]>(RPCMethods.LIST, []);
+  }
+
+/**
+ * Get history cache for a topic or pattern.
+ * @param topic Topic.
+ * @param opts Options to send with the request.
+ * @returns Promise with success or error.
+ */
+  public async getHistory(
+    topic: string,
+    opts: Omit<HistoryOptions, 'topic'>
+  ): Promise<SubscribeResult> {
+    if (!topic) {
+      throw new Error('Topic cannot be empty.');
+    }
+
+    if (!opts.since && !opts.sinceEventId) {
+      throw new Error('You need to specify either since or sinceEventId.');
+    }
+
+    if (opts.since && opts.sinceEventId) {
+      throw new Error('You need to specify either since or sinceEventId, not both at the same time.');
+    }
+
+    let historyRequest: HistoryOptions = {
+      topic,
+    };
+
+    if (opts) {
+      Object.assign(historyRequest, opts);
+    }
+
+    return this._sendRPCRequest<SubscribeResult>(RPCMethods.HISTORY, historyRequest);
   }
 
   /**
