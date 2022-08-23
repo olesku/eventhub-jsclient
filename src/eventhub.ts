@@ -470,15 +470,16 @@ class Eventhub implements IEventhub {
     topic: string,
     opts: Omit<HistoryOptions, 'topic'>
   ): Promise<HistoryResult> {
+
     if (!topic) {
       throw new Error('Topic cannot be empty.');
     }
 
-    if (!opts.since && !opts.sinceEventId) {
+    if (!('since' in opts) && !('sinceEventId' in opts)) {
       throw new Error('You need to specify either since or sinceEventId.');
     }
 
-    if (opts.since && opts.sinceEventId) {
+    if (('since' in opts) && ('sinceEventId' in opts)) {
       throw new Error('You need to specify either since or sinceEventId, not both at the same time.');
     }
 
@@ -486,9 +487,7 @@ class Eventhub implements IEventhub {
       topic,
     };
 
-    if (opts) {
-      Object.assign(historyRequest, opts);
-    }
+    Object.assign(historyRequest, opts);
 
     return this._sendRPCRequest<HistoryResult>(RPCMethods.HISTORY, historyRequest);
   }
