@@ -345,3 +345,33 @@ test('Test that del() sends correct RPC request', async () => {
     },
   });
 });
+
+test('Test that getEventlog() sends correct RPC request', async () => {
+  expect.assertions(2);
+
+  eventhub.getEventlog('topic1', { since: 1661085300 });
+  const resp = await waitForOutputMessage();
+
+  expect(resp).toEqual({
+    id: 1,
+    jsonrpc: '2.0',
+    method: 'eventlog',
+    params: {
+      topic: 'topic1',
+      since: 1661085300,
+    },
+  });
+
+  eventhub.getEventlog('topic1', { sinceEventId: "1661085300-0" });
+  const resp2 = await waitForOutputMessage();
+
+  expect(resp2).toEqual({
+    id: 2,
+    jsonrpc: '2.0',
+    method: 'eventlog',
+    params: {
+      topic: 'topic1',
+      sinceEventId: "1661085300-0",
+    },
+  });
+});

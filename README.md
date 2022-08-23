@@ -101,8 +101,22 @@ eventhub.listSubscriptions().then(subscriptions => {
 });
 ```
 
+**Get cached events for a topic without subscribing**
+```js
+// In this example we request all cached events from my/topic from the past 10 seconds.
+// A negative 'since' number means Date.now() - abs(x).
+// You can also speciy 'since' as a literal unix timestamp in milliseconds.
+// We also support to request all events since a given message id by
+// specifying 'sinceEventId': <id> instead of 'since'.
+evClient.getEventlog("my/topic", { since: -10000 }).then((cache) => {
+	for (const item of cache.items) {
+		console.log(item);
+	}
+});
+```
+
 ## Reconnection handling
-If the client loses connection with the server it will try to reconnect. When the connection is eventually regained all messages that has been lost during the disconnected period will be sent to the client before new ones.
+If the client loses connection with the server it will try to reconnect. When the connection is eventually restored all messages that has been lost during the disconnected period will be sent to the client before new ones.
 
 Some of this behaviour is configureable as the third parameter to the ```connect()``` method.
 
@@ -124,7 +138,7 @@ Library provides lifecycle events. You can subscribe for these events with the b
 const evClient = new Eventhub("ws://myeventhubserver.com", "myAuthToken");
 
 evClient.on('connect', callback)
-``` 
+```
 
 #### Event `'connect'`
 Emitted on successful (re)connection.
