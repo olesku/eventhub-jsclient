@@ -461,7 +461,7 @@ class Eventhub implements IEventhub {
   }
 
 /**
- * Get history cache for a topic or pattern.
+ * Get cached events for a topic or pattern.
  * @param topic Topic.
  * @param opts Options to send with the request.
  * @returns Promise with success or error.
