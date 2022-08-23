@@ -30,7 +30,7 @@ const enum RPCMethods {
   UNSUBSCRIBE = 'unsubscribe',
   UNSUBSCRIBE_ALL = 'unsubscribeAll',
   LIST = 'list',
-  HISTORY = 'history',
+  EVENTLOG = 'eventlog',
   GET = 'get',
   SET = 'set',
   DEL = 'del',
@@ -71,7 +71,7 @@ interface SubscribeOptions {
   since?: number;
 }
 
-interface HistoryOptions extends SubscribeOptions {
+interface EventlogOptions extends SubscribeOptions {
 }
 
 interface MessageResult {
@@ -87,8 +87,8 @@ interface SubscribeResult {
     topic: string;
 }
 
-interface HistoryResult {
-  action: 'history';
+interface EventlogResult {
+  action: 'Eventlog';
   status: string;
   topic: string;
   result: Array<MessageResult>
@@ -466,10 +466,10 @@ class Eventhub implements IEventhub {
  * @param opts Options to send with the request.
  * @returns Promise with success or error.
  */
-  public async getHistory(
+  public async getEventlog(
     topic: string,
-    opts: Omit<HistoryOptions, 'topic'>
-  ): Promise<HistoryResult> {
+    opts: Omit<EventlogOptions, 'topic'>
+  ): Promise<EventlogResult> {
 
     if (!topic) {
       throw new Error('Topic cannot be empty.');
@@ -483,13 +483,13 @@ class Eventhub implements IEventhub {
       throw new Error('You need to specify either since or sinceEventId, not both at the same time.');
     }
 
-    let historyRequest: HistoryOptions = {
+    let EventlogRequest: EventlogOptions = {
       topic,
     };
 
-    Object.assign(historyRequest, opts);
+    Object.assign(EventlogRequest, opts);
 
-    return this._sendRPCRequest<HistoryResult>(RPCMethods.HISTORY, historyRequest);
+    return this._sendRPCRequest<EventlogResult>(RPCMethods.EVENTLOG, EventlogRequest);
   }
 
   /**

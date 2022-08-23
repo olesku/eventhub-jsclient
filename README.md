@@ -108,7 +108,7 @@ eventhub.listSubscriptions().then(subscriptions => {
 // You can also speciy 'since' as a literal unix timestamp in milliseconds.
 // We also support to request all events since a given message id by
 // specifying 'sinceEventId': <id> instead of 'since'.
-evClient.getHistory("my/topic", { since: -10000 }).then((cache) => {
+evClient.getEventlog("my/topic", { since: -10000 }).then((cache) => {
 	for (const item of cache.items) {
 		console.log(item);
 	}
