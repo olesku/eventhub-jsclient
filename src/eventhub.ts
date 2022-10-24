@@ -45,6 +45,13 @@ const enum LifecycleEvents {
   OFFLINE = 'offline',
 }
 
+type MittEvents = {
+  connect: void;
+  reconnect: void;
+  disconnect: void;
+  offline: ErrorEvent | CloseEvent;
+};
+
 interface Subscription {
   topic: string;
   rpcRequestId: number;
@@ -96,13 +103,6 @@ interface EventlogResult {
 
 declare interface IEventhub {}
 
-type MittEvents = {
-  [LifecycleEvents.CONNECT]: void;
-  [LifecycleEvents.OFFLINE]: ErrorEvent | CloseEvent;
-  [LifecycleEvents.RECONNECT]: void;
-  [LifecycleEvents.DISCONNECT]: void;
-};
-
 class Eventhub implements IEventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
@@ -125,7 +125,7 @@ class Eventhub implements IEventhub {
    * @param token Authentication token.
    * @param opts Options.
    */
-  constructor(url: string, token?: string, opts?: { [P in keyof ConnectionOptions]?: ConnectionOptions[P] }) {
+  constructor(url: string, token?: string, opts?: Partial<ConnectionOptions>) {
     this._wsUrl = `${url}/?auth=${token}`;
     this._opts = new ConnectionOptions();
     this._emitter = mitt(); // event emitter
