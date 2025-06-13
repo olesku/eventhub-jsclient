@@ -103,7 +103,7 @@ type MittEvents = {
   [LifecycleEvents.DISCONNECT]: void;
 };
 
-class Eventhub implements IEventhub {
+export class Eventhub implements IEventhub {
   private _wsUrl: string;
   private _socket: WebSocket;
   private _opts: ConnectionOptions = new ConnectionOptions();
