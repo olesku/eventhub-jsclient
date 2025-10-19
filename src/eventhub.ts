@@ -71,27 +71,26 @@ interface SubscribeOptions {
   since?: number;
 }
 
-interface EventlogOptions extends SubscribeOptions {
-}
+interface EventlogOptions extends SubscribeOptions {}
 
 interface MessageResult {
-    id: string;
-    topic: string;
-    message: any;
-    origin: string;
+  id: string;
+  topic: string;
+  message: any;
+  origin: string;
 }
 
 interface SubscribeResult {
-    action: 'subscribe';
-    status: string;
-    topic: string;
+  action: 'subscribe';
+  status: string;
+  topic: string;
 }
 
 interface EventlogResult {
   action: 'Eventlog';
   status: string;
   topic: string;
-  result: Array<MessageResult>
+  result: Array<MessageResult>;
 }
 
 declare interface IEventhub {}
@@ -125,7 +124,11 @@ export class Eventhub implements IEventhub {
    * @param token Authentication token.
    * @param opts Options.
    */
-  constructor(url: string, token?: string, opts?: { [P in keyof ConnectionOptions]?: ConnectionOptions[P] }) {
+  constructor(
+    url: string,
+    token?: string,
+    opts?: { [P in keyof ConnectionOptions]?: ConnectionOptions[P] },
+  ) {
     this._wsUrl = `${url}/?auth=${token}`;
     this._opts = new ConnectionOptions();
     this._emitter = mitt(); // event emitter
@@ -237,14 +240,16 @@ export class Eventhub implements IEventhub {
       };
 
       this._sentPingsList.push(pingReq);
-      this._sendRPCRequest<{ pong: number }>(RPCMethods.PING, []).then((_pong) => {
-        for (let i = 0; i < this._sentPingsList.length; i++) {
-          if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
-            this._sentPingsList.splice(i, 1);
-            break;
+      this._sendRPCRequest<{ pong: number }>(RPCMethods.PING, []).then(
+        (_pong) => {
+          for (let i = 0; i < this._sentPingsList.length; i++) {
+            if (this._sentPingsList[i].rpcRequestId == pingReq.rpcRequestId) {
+              this._sentPingsList.splice(i, 1);
+              break;
+            }
           }
-        }
-      });
+        },
+      );
     }, pingInterval);
 
     // Check that our pings is successfully ponged by the server.
@@ -252,7 +257,7 @@ export class Eventhub implements IEventhub {
     this._pingTimeOutTimer = setInterval(() => {
       const now = Date.now();
       let failedPingCount = this._sentPingsList.filter(
-        (ping: PingRequest) => now > ping.timestamp + this._opts.pingTimeout
+        (ping: PingRequest) => now > ping.timestamp + this._opts.pingTimeout,
       ).length;
 
       if (failedPingCount >= maxFailedPings) {
@@ -277,7 +282,10 @@ export class Eventhub implements IEventhub {
    * @param params What parameters to include with the call.
    * @return Promise with response or error.
    */
-  private _sendRPCRequest<T = any>(method: RPCMethods, params: any): Promise<T> {
+  private _sendRPCRequest<T = any>(
+    method: RPCMethods,
+    params: any,
+  ): Promise<T> {
     const requestObject = {
       id: ++this._rpcResponseCounter,
       jsonrpc: '2.0',
@@ -291,16 +299,13 @@ export class Eventhub implements IEventhub {
         return;
       }
 
-      this._rpcCallbackList.set(
-        requestObject.id,
-        (err: string, resp: T) => {
-          if (err != null) {
-            reject(err);
-          } else {
-            resolve(resp);
-          }
+      this._rpcCallbackList.set(requestObject.id, (err: string, resp: T) => {
+        if (err != null) {
+          reject(err);
+        } else {
+          resolve(resp);
         }
-      );
+      });
 
       try {
         this._socket.send(JSON.stringify(requestObject));
@@ -382,7 +387,7 @@ export class Eventhub implements IEventhub {
   public async subscribe(
     topic: string,
     callback: SubscriptionCallback,
-    opts?: Omit<SubscribeOptions, 'topic'>
+    opts?: Omit<SubscribeOptions, 'topic'>,
   ): Promise<SubscribeResult> {
     if (!topic) {
       throw new Error('Topic cannot be empty.');
@@ -407,7 +412,10 @@ export class Eventhub implements IEventhub {
       callback,
     });
 
-    return this._sendRPCRequest<SubscribeResult>(RPCMethods.SUBSCRIBE, subscribeRequest);
+    return this._sendRPCRequest<SubscribeResult>(
+      RPCMethods.SUBSCRIBE,
+      subscribeRequest,
+    );
   }
 
   /**
@@ -418,7 +426,7 @@ export class Eventhub implements IEventhub {
     const topicList: string[] = Array.isArray(topics) ? topics : [topics];
     if (topicList.length > 0) {
       this._subscriptionCallbackList = this._subscriptionCallbackList.filter(
-        (cb) => !topicList.includes(cb.topic)
+        (cb) => !topicList.includes(cb.topic),
       );
 
       this._sendRPCRequest(RPCMethods.UNSUBSCRIBE, topicList);
@@ -460,17 +468,16 @@ export class Eventhub implements IEventhub {
     return this._sendRPCRequest<string[]>(RPCMethods.LIST, []);
   }
 
-/**
- * Get cached events for a topic or pattern.
- * @param topic Topic.
- * @param opts Options to send with the request.
- * @returns Promise with success or error.
- */
+  /**
+   * Get cached events for a topic or pattern.
+   * @param topic Topic.
+   * @param opts Options to send with the request.
+   * @returns Promise with success or error.
+   */
   public async getEventlog(
     topic: string,
-    opts: Omit<EventlogOptions, 'topic'>
+    opts: Omit<EventlogOptions, 'topic'>,
   ): Promise<EventlogResult> {
-
     if (!topic) {
       throw new Error('Topic cannot be empty.');
     }
@@ -479,8 +486,10 @@ export class Eventhub implements IEventhub {
       throw new Error('You need to specify either since or sinceEventId.');
     }
 
-    if (('since' in opts) && ('sinceEventId' in opts)) {
-      throw new Error('You need to specify either since or sinceEventId, not both at the same time.');
+    if ('since' in opts && 'sinceEventId' in opts) {
+      throw new Error(
+        'You need to specify either since or sinceEventId, not both at the same time.',
+      );
     }
 
     let EventlogRequest: EventlogOptions = {
@@ -489,7 +498,10 @@ export class Eventhub implements IEventhub {
 
     Object.assign(EventlogRequest, opts);
 
-    return this._sendRPCRequest<EventlogResult>(RPCMethods.EVENTLOG, EventlogRequest);
+    return this._sendRPCRequest<EventlogResult>(
+      RPCMethods.EVENTLOG,
+      EventlogRequest,
+    );
   }
 
   /**
@@ -528,13 +540,13 @@ export class Eventhub implements IEventhub {
   /**
    * Close connection to Eventhub
    */
-   public async disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     this._manuallyDisconnected = true;
 
     if (this._isConnected || this._socket.readyState === WebSocket.CONNECTING) {
       this._isConnected = false;
 
-      await new Promise(resolve => {
+      await new Promise((resolve) => {
         const forceCloseTimeoutId = setTimeout(() => {
           if (
             this._socket.readyState != WebSocket.CLOSED &&
@@ -577,7 +589,7 @@ export class Eventhub implements IEventhub {
    */
   public on<Key extends keyof MittEvents>(
     type: Key,
-    handler: Handler<MittEvents[Key]>
+    handler: Handler<MittEvents[Key]>,
   ): this {
     this._emitter.on(type, handler);
     return this;
@@ -588,7 +600,7 @@ export class Eventhub implements IEventhub {
    */
   public off<Key extends keyof MittEvents>(
     type: Key,
-    handler?: Handler<MittEvents[Key]>
+    handler?: Handler<MittEvents[Key]>,
   ): this {
     this._emitter.off(type, handler);
     return this;
