@@ -63,6 +63,7 @@ class ConnectionOptions {
   maxFailedPings: number = 3;
   reconnectInterval: number = 10000;
   disablePingCheck: boolean = false;
+  userAgent?: string;
 }
 
 interface SubscribeOptions {
@@ -144,7 +145,11 @@ export class Eventhub implements IEventhub {
     this._manuallyDisconnected = false;
 
     return new Promise((resolve, reject) => {
-      this._socket = new WebSocket(this._wsUrl);
+      this._socket = new WebSocket(this._wsUrl, {
+        headers: {
+          ['user-agent']: this._opts.userAgent,
+        },
+      });
       this._socket.onmessage = this._parseRPCResponse.bind(this);
 
       this._socket.onopen = () => {
