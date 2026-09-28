@@ -150,7 +150,7 @@ export class Eventhub implements IEventhub {
         this._opts.userAgent
           ? {
               headers: {
-                ['user-agent']: this._opts.userAgent,
+                'user-agent': this._opts.userAgent,
               },
             }
           : undefined,

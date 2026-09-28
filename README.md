@@ -116,7 +116,7 @@ for (const item of cache.items) {
 
 If the client loses connection with the server it will try to reconnect. When the connection is eventually restored all messages that has been lost during the disconnected period will be sent to the client before new ones.
 
-Some of this behavior is configurable as the third parameter to the `connect()` method.
+Some of this behavior is configurable as the third parameter to the `Eventhub` constructor.
 
 _Default options:_
 
@@ -126,9 +126,15 @@ _Default options:_
   pingTimeout: 3000,        // Consider a ping as failed after 3 seconds.
   maxFailedPings: 3,        // How many lost pings before trying to reconnect.
   reconnectInterval: 10000, // 10 seconds between each reconnect attempt.
-  disablePingCheck: false   // Disable pings and only rely on WebSocket 'onerror' event for detecting lost connection.
+  disablePingCheck: false,  // Disable pings and only rely on WebSocket 'onerror' event for detecting lost connection.
+  userAgent: undefined      // Node.js only: User-Agent header to send on the WebSocket handshake.
 }
 ```
+
+**Note:** `userAgent` is Node.js only. Browsers set the `User-Agent` header on the
+WebSocket handshake themselves, and it cannot be overridden from JavaScript. Setting
+this option in a browser will make `connect()` reject, so leave it unset in code that
+also runs client-side.
 
 ## Life-cycle events
 
