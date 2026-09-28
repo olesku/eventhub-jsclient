@@ -21,11 +21,55 @@ Or as a module directly from Unpkg:
 
 ```html
 <script src="https://unpkg.com/eventhub-jsclient/dist/eventhub.umd.js"></script>
+<script>
+  // The UMD bundle exposes a namespace object, so the class is Eventhub.Eventhub.
+  const evClient = new Eventhub.Eventhub('ws://myeventhubserver.com', 'myAuthToken');
+</script>
 <!-- or -->
 <script type="module">
   import Eventhub from 'https://unpkg.com/eventhub-jsclient/dist/eventhub.modern.js?module';
   const evClient = new Eventhub('ws://myeventhubserver.com', 'myAuthToken');
 </script>
+```
+
+## Importing
+
+With ES modules both a default and a named export are available:
+
+```js
+import Eventhub from 'eventhub-jsclient';
+// or
+import { Eventhub } from 'eventhub-jsclient';
+```
+
+With CommonJS the module resolves to a namespace object, so destructure it:
+
+```js
+const { Eventhub } = require('eventhub-jsclient');
+```
+
+## Module shape (changed in 2.4.1)
+
+In 2.4.1 `Eventhub` gained a named export alongside the existing default export, which
+changed how the CommonJS and UMD bundles expose the class: both now resolve to a
+namespace object rather than to the class itself. ES module consumers are unaffected.
+
+If you are upgrading from 2.4.0 or earlier, update these two call sites:
+
+```js
+// Before
+const Eventhub = require('eventhub-jsclient');
+
+// After
+const { Eventhub } = require('eventhub-jsclient');
+```
+
+```js
+// Before, via <script src="...eventhub.umd.js">
+new Eventhub(url, token);
+
+// After
+new Eventhub.Eventhub(url, token);
 ```
 
 ## Examples

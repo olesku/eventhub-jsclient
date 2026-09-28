@@ -5,3 +5,7 @@ examples/*
 .travis.yml
 .gitignore
 .npmignore
+.vscode/*
+.editorconfig
+.prettierrc
+.github/*
