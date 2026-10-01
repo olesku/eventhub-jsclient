@@ -5,6 +5,8 @@
 eventhub-jsclient is a JavaScript client library for [Eventhub](https://github.com/olesku/eventhub).
 It enables you to easily subscribe and publish to an Eventhub server from the browser, Node.js and Deno.
 
+**Requirements:** Node.js >= 22 (for its built-in `WebSocket`), or any modern browser, Deno.
+
 ## Installation
 
 ```bash
@@ -175,10 +177,11 @@ _Default options:_
 }
 ```
 
-**Note:** `userAgent` is Node.js only. Browsers set the `User-Agent` header on the
+**Note:** `userAgent` only works in Node.js. Browsers set the `User-Agent` header on the
 WebSocket handshake themselves, and it cannot be overridden from JavaScript. Setting
 this option in a browser will make `connect()` reject, so leave it unset in code that
-also runs client-side.
+also runs client-side. Deno's `WebSocket` implementation currently ignores custom
+headers on the handshake, so `userAgent` has no effect there either.
 
 ## Life-cycle events
 
@@ -203,6 +206,21 @@ Emitted after a connection is being close.
 #### Event `'offline'`
 
 Emitted when the client goes offline.
+
+
+## Migrating from 2.x (3.0.0)
+
+3.0.0 drops the `isomorphic-ws` and `ws`/`@types/ws` dependencies and uses the
+platform's built-in `WebSocket` (`globalThis.WebSocket`) directly. This means:
+
+- **Node.js >= 22 is now required.** Older Node versions don't have a global
+  `WebSocket` and `connect()` will reject with an error saying so.
+- The type of the `offline` event payload changed from `ErrorEvent | CloseEvent`
+  (as defined by `ws`) to the standard `Event | CloseEvent`. This only affects
+  TypeScript consumers relying on the old type.
+- Connection error messages are less detailed than `ws`'s (e.g. no HTTP status
+  code on a failed handshake), since they now come from the runtime's native
+  implementation instead of `ws`.
 
 # License
 
