@@ -18,8 +18,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-import WebSocket, { MessageEvent, ErrorEvent, CloseEvent } from 'isomorphic-ws';
 import mitt, { Emitter, Handler } from 'mitt';
+import type { WebSocketInit } from 'undici-types';
 
 declare type RPCCallback = (err: string, message: any) => void;
 declare type SubscriptionCallback = (message: any) => void;
@@ -63,6 +63,10 @@ class ConnectionOptions {
   maxFailedPings: number = 3;
   reconnectInterval: number = 10000;
   disablePingCheck: boolean = false;
+  /**
+   * Provide if WebSocket handshakes lacking a distinctive User-Agent header are blocked.
+   * Working in Node.js/Bun only. Browsers always set their own User-Agent and never let overriding it
+   */
   userAgent?: string;
 }
 
@@ -98,7 +102,7 @@ declare interface IEventhub {}
 
 type MittEvents = {
   [LifecycleEvents.CONNECT]: void;
-  [LifecycleEvents.OFFLINE]: ErrorEvent | CloseEvent;
+  [LifecycleEvents.OFFLINE]: Event | CloseEvent;
   [LifecycleEvents.RECONNECT]: void;
   [LifecycleEvents.DISCONNECT]: void;
 };
@@ -145,7 +149,32 @@ export class Eventhub implements IEventhub {
     this._manuallyDisconnected = false;
 
     return new Promise((resolve, reject) => {
-      this._socket = new WebSocket(
+      if (typeof WebSocket === 'undefined') {
+        reject(
+          new Error(
+            'WebSocket is not available in this environment. "eventhub-jsclient" requires Node.js >= 22 or a browser',
+          ),
+        );
+        return;
+      }
+
+      // Only Node.js and Bun accept a non-standard `WebSocketInit` with `headers` as the second constructor parameter
+      // browsers only allow a subprotocol
+      if (this._opts.userAgent && !isNode()) {
+        reject(
+          new Error(
+            'The userAgent option is only supported on Node.js and Bun, not in browsers or Deno',
+          ),
+        );
+        return;
+      }
+
+      const NodeWebSocket = WebSocket as new (
+        url: string,
+        init?: WebSocketInit,
+      ) => WebSocket;
+
+      this._socket = new NodeWebSocket(
         this._wsUrl,
         this._opts.userAgent
           ? {
@@ -169,7 +198,7 @@ export class Eventhub implements IEventhub {
         resolve(true);
       };
 
-      this._socket.onerror = (err: ErrorEvent) => {
+      this._socket.onerror = (err: Event) => {
         this._emitter.emit(LifecycleEvents.OFFLINE, err);
 
         if (this._isConnected) {
@@ -615,6 +644,17 @@ export class Eventhub implements IEventhub {
     this._emitter.off(type, handler);
     return this;
   }
+}
+
+/**
+ * Detect whether we're running on Node.js or Bun, as opposed to a browser or Deno,
+ * neither of which accept the non-standard `headers` option on the WebSocket constructor
+ */
+function isNode(): boolean {
+  return (
+    typeof process !== 'undefined' &&
+    Boolean(process.versions?.node || process.versions?.bun)
+  );
 }
 
 export default Eventhub;
