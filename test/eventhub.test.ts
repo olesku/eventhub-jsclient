@@ -375,3 +375,70 @@ test('Test that getEventlog() sends correct RPC request', async () => {
     },
   });
 });
+
+test('Test that userAgent option sends the User-Agent header on the WebSocket handshake', async () => {
+  expect.assertions(1);
+
+  const receivedUserAgent = new Promise<string>((resolve) => {
+    testServer.once('connection', (_ws, req) => {
+      resolve(req.headers['user-agent']);
+    });
+  });
+
+  const eventhubWithUserAgent = new Eventhub(
+    `ws://127.0.0.1:${testServer.options.port}`,
+    '',
+    { userAgent: 'eventhub-jsclient-test/1.0' }
+  );
+
+  await eventhubWithUserAgent.connect();
+
+  expect(await receivedUserAgent).toEqual('eventhub-jsclient-test/1.0');
+
+  await eventhubWithUserAgent.disconnect();
+});
+
+test('Test that connect() rejects when no WebSocket implementation is available', async () => {
+  expect.assertions(1);
+
+  const originalWebSocket = global.WebSocket;
+  // @ts-ignore
+  delete global.WebSocket;
+
+  const eventhubWithoutWebSocket = new Eventhub(
+    `ws://127.0.0.1:${testServer.options.port}`,
+    ''
+  );
+
+  try {
+    await expect(eventhubWithoutWebSocket.connect()).rejects.toThrow(
+      /WebSocket is not available in this environment/
+    );
+  } finally {
+    global.WebSocket = originalWebSocket;
+  }
+});
+
+test('Test that connect() rejects when userAgent is set outside Node.js/Bun', async () => {
+  expect.assertions(1);
+
+  const originalVersions = process.versions;
+  // `versions` is a read-only property, so a plain assignment throws;
+  // defineProperty can still replace it. Simulate a browser/Deno environment,
+  // where process.versions doesn't identify Node.js or Bun.
+  Object.defineProperty(process, 'versions', { value: {}, configurable: true });
+
+  const eventhubWithUserAgent = new Eventhub(
+    `ws://127.0.0.1:${testServer.options.port}`,
+    '',
+    { userAgent: 'eventhub-jsclient-test/1.0' }
+  );
+
+  try {
+    await expect(eventhubWithUserAgent.connect()).rejects.toThrow(
+      /userAgent option is only supported on Node.js and Bun/
+    );
+  } finally {
+    Object.defineProperty(process, 'versions', { value: originalVersions, configurable: true });
+  }
+});
