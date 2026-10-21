@@ -119,6 +119,8 @@ await evClient.publish('my/topic', 'This is a test message!', {
 });
 ```
 
+If `ttl` is omitted the server's `default_cache_ttl` is used. Set `ttl: 0` to skip the cache entirely: the message is only delivered to current subscribers and is not returned by `getEventlog()` or `subscribe()` with `since`. Requires an Eventhub server v1.5.0 or newer; older servers treat `ttl: 0` as the default TTL.
+
 **Unsubscribe from a topic**
 
 ```js
